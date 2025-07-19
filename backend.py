@@ -14,16 +14,31 @@ class DbAct:
         self.__dump_path_xlsx = path_xlsx
 
 
-    def add_user(self, user_id, first_name, last_name, nick_name, phone, is_):
+    def add_user(self, user_id, first_name, last_name, nick_name, phone, is_foreman):
             if not self.user_is_existed(user_id):
                 if user_id in self.__config.get_config()['admins']:
                     is_admin = True
                 else:
                     is_admin = False
                 self.__db.db_write(
-                    'INSERT INTO users (user_id, first_name, last_name, nick_name, phone, system_data, is_admin, is_foreman) '
-                    'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                    (user_id, first_name, last_name, nick_name, phone, json.dumps({"index": None}), is_admin, is_foreman))
+                    'INSERT INTO users (user_id, first_name, last_name, nick_name, system_data, is_admin, is_foreman) '
+                    'VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    (user_id, first_name, last_name, nick_name, json.dumps({"index": None}), is_admin, is_foreman))
+                
+    def set_user_id_in_topic(self, user_id, topic_id):
+        if not self.user_is_existed(user_id):
+            return None
+        self.__db.db_write('UPDATE users SET topic_id = ? WHERE user_id = ?', (topic_id, user_id))
+                
+    def get_user_id_from_topic(self, topic_id):
+        data = self.__db.db_read("SELECT user_id FROM users WHERE topic_id = ?", (topic_id, ))
+        if len(data) > 0:
+            return data[0][0]
+        
+    def set_user_is_foreman(self, user_id):
+        if not self.user_is_existed(user_id):
+            return None
+        self.__db.db_write('UPDATE users SET is_foreman = 1 WHERE user_id = ?', (user_id, ))
 
 
     def user_is_existed(self, user_id: int):

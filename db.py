@@ -22,9 +22,9 @@ class DB:
                 first_name TEXT,
                 last_name TEXT,
                 nick_name TEXT,
-                phone TEXT,
                 is_admin BOOL,
                 is_foreman BOOL,
+                topic_id INTEGER,
                 system_data TEXT,
                 UNIQUE(user_id)
                 )

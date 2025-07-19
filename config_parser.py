@@ -9,7 +9,7 @@ class ConfigParser:
         super(ConfigParser, self).__init__()
         self.__file_path = file_path
         self.__default_pathes = {'Windows': 'C:\\', 'Linux': '/'}
-        self.__default = {'tg_api': '', 'admins': [], 'db_file_name': 'db.sqlite3', 'xlsx_path': 'users.xlsx'}
+        self.__default = {'tg_api': '', 'admins': [], 'db_file_name': 'db.sqlite3', 'xlsx_path': 'users.xlsx', 'group_id': -1002783743854}
         self.__current_config = None
         self.load_conf()
 

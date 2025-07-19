@@ -29,6 +29,20 @@ class DB:
                 UNIQUE(user_id)
                 )
             ''')
+            self.__cursor.execute('''
+            CREATE TABLE IF NOT EXISTS construction_objects(
+                row_id INTEGER primary key autoincrement not null,
+                object_name TEXT,
+                name_of_material TEXT,
+                norm REAL,
+                unit_of_measurement TEXT,
+                counterparty TEXT,
+                state_registration_number_of_equipment TEXT,
+                volume REAL,
+                cost REAL,
+                UNIQUE(row_id)
+                )
+            ''')
             self.__db.commit()
         else:
             self.__db = sqlite3.connect(self.__db_path, check_same_thread=False)

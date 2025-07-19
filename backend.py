@@ -81,6 +81,21 @@ class DbAct:
             return None
         return self.__db.db_read('SELECT system_data FROM users WHERE user_id = ?', (user_id,))[0][0]
     
+    def write_new_object(self, user_id, object_name):
+        if not self.user_is_existed(user_id):
+            return None
+        self.__db.db_write('INSERT INTO construction_objects (object_name) VALUES (?)', (object_name, ))
+
+    def get_all_objects(self, user_id):
+        if not self.user_is_existed(user_id):
+            return None
+        return self.__db.db_read('SELECT object_name FROM construction_objects', ())
+    
+    def delete_object(self, user_id, object_name):
+        if not self.user_is_existed(user_id):
+            return None
+        self.__db.db_write('DELETE FROM construction_objects WHERE object_name = ?', (object_name, ))
+    
 
 
     def db_export_xlsx(self):

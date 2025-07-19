@@ -34,8 +34,11 @@ def main():
                 "Здесь ты можешь быстро ввести данные о выполненных работах и сформировать отчёты.\n\n" \
                 "Готов начать? Нажми кнопку ниже 👇", reply_markup=buttons.unregister_buttons())
         elif command == 'admin':
-            bot.send_message(user_id, "<b>Добро пожаловать в Админ-Панель!</b>"
+            if db_actions.user_is_admin(user_id):
+                bot.send_message(user_id, "<b>Добро пожаловать в Админ-Панель!</b>"
                              "\n\nВыберите пункт ниже!", reply_markup=buttons.admin_buttons(), parse_mode='HTML')
+            else:
+                bot.send_message(user_id, "<b>Вы не администратор</b>", parse_mode='HTML')
 
 
                 
@@ -47,7 +50,23 @@ def main():
         buttons = Bot_inline_btns()
         if db_actions.user_is_existed(user_id):
             if db_actions.user_is_admin(user_id):
-                pass
+                if call.data == "add_object":
+                    db_actions.set_user_system_key(user_id, "index", 1)
+                    bot.send_message(user_id, "Отправьте название объекта")
+                elif call.data == "delete_object":
+                    objects = db_actions.get_all_objects(user_id)
+                    bot.send_message(user_id, "Выберите объект для удаления\n\n" \
+                    "Учтите! При удалении объекта, удаляться записи о нем!", reply_markup=buttons.delete_object_buttons(objects))
+                elif call.data[:6] == "object":
+                    object_name = call.data[6:]
+                    db_actions.delete_object(user_id, object_name)
+                    bot.send_message(user_id, "Объект удален! ✅")
+
+                elif call.data == "see_objects":
+                    object_names = db_actions.get_all_objects(user_id)
+                    objects_list = "\n".join([f"{i[0]}" for i in object_names])
+                    bot.send_message(user_id, "Список существующих объектов:\n" \
+                    f"{objects_list}")
             if call.data == "registration_foreman":
                 bot.send_message(user_id, "Первым делом заполни небольшую анкету, уточни своё ФИО.")
                 db_actions.set_user_system_key(user_id, "index", 0)
@@ -76,6 +95,13 @@ def main():
                 db_actions.set_user_id_in_topic(user_id, topic_id)
                 bot.send_message(user_id, '⏳ Ваша заявка принята, ожидайте!')
                 db_actions.set_user_system_key(user_id, "index", None)
+            elif code == 1:
+                db_actions.set_user_system_key(user_id, "index", None)
+                db_actions.write_new_object(user_id, user_input)
+                object_names = db_actions.get_all_objects(user_id)
+                objects_list = "\n".join([f"{i[0]}" for i in object_names])
+                bot.send_message(user_id, "Новый объект записан, вот список существующих объектов:\n" \
+                f"{objects_list}")
 
     bot.polling(none_stop=True)
 

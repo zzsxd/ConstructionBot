@@ -19,8 +19,7 @@ class DB:
             CREATE TABLE IF NOT EXISTS users(
                 row_id INTEGER primary key autoincrement not null,
                 user_id INTEGER NOT NULL,
-                first_name TEXT,
-                last_name TEXT,
+                full_name TEXT,
                 nick_name TEXT,
                 is_admin BOOL,
                 is_foreman BOOL,
@@ -32,6 +31,7 @@ class DB:
             self.__cursor.execute('''
             CREATE TABLE IF NOT EXISTS construction_objects(
                 row_id INTEGER primary key autoincrement not null,
+                user_id INTEGER,
                 object_name TEXT,
                 name_of_material TEXT,
                 norm REAL,

@@ -14,16 +14,16 @@ class DbAct:
         self.__dump_path_xlsx = path_xlsx
 
 
-    def add_user(self, user_id, first_name, last_name, nick_name, phone, is_foreman):
+    def add_user(self, user_id, full_name, nick_name, is_foreman):
             if not self.user_is_existed(user_id):
                 if user_id in self.__config.get_config()['admins']:
                     is_admin = True
                 else:
                     is_admin = False
                 self.__db.db_write(
-                    'INSERT INTO users (user_id, first_name, last_name, nick_name, system_data, is_admin, is_foreman) '
-                    'VALUES (?, ?, ?, ?, ?, ?, ?)',
-                    (user_id, first_name, last_name, nick_name, json.dumps({"index": None}), is_admin, is_foreman))
+                    'INSERT INTO users (user_id, full_name, nick_name, system_data, is_admin, is_foreman) '
+                    'VALUES (?, ?, ?, ?, ?, ?)',
+                    (user_id, full_name, nick_name, json.dumps({"index": None, "attach_object_name": None, "full_name": None}), is_admin, is_foreman))
                 
     def set_user_id_in_topic(self, user_id, topic_id):
         if not self.user_is_existed(user_id):
@@ -40,6 +40,11 @@ class DbAct:
             return None
         self.__db.db_write('UPDATE users SET is_foreman = 1 WHERE user_id = ?', (user_id, ))
 
+    def set_user_full_name(self, user_id, full_name):
+        if not self.user_is_existed(user_id):
+            return None
+        self.__db.db_write('UPDATE users SET full_name = ? WHERE user_id = ?', (full_name, user_id,))
+
 
     def user_is_existed(self, user_id: int):
             data = self.__db.db_read('SELECT count(*) FROM users WHERE user_id = ?', (user_id,))
@@ -52,6 +57,15 @@ class DbAct:
             
     def user_is_admin(self, user_id: int):
         data = self.__db.db_read('SELECT is_admin FROM users WHERE user_id = ?', (user_id,))
+        if len(data) > 0:
+            if data[0][0] == 1:
+                status = True
+            else:
+                status = False
+            return status
+        
+    def user_is_foreman(self, user_id: int):
+        data = self.__db.db_read('SELECT is_foreman FROM users WHERE user_id = ?', (user_id,))
         if len(data) > 0:
             if data[0][0] == 1:
                 status = True
@@ -89,7 +103,28 @@ class DbAct:
     def get_all_objects(self, user_id):
         if not self.user_is_existed(user_id):
             return None
-        return self.__db.db_read('SELECT object_name FROM construction_objects', ())
+        return self.__db.db_read('SELECT user_id, object_name FROM construction_objects', ())
+    
+    def get_foreman_objects(self, user_id):
+        if not self.user_is_existed(user_id):
+            return None
+        return self.__db.db_read('SELECT object_name FROM construction_objects WHERE user_id = ?', (user_id, ))
+    
+
+    def get_name_from_user_id(self, user_id):
+        if not self.user_is_existed(user_id):
+            return None
+        return self.__db.db_read('SELECT full_name FROM users WHERE user_id = ?', (user_id, ))
+    
+    def get_foremans(self, user_id):
+        if not self.user_is_existed(user_id):
+            return None
+        return self.__db.db_read('SELECT user_id, full_name FROM users WHERE is_foreman = True', ())
+    
+    def attach_foreman_to_object(self, user_id, object_name):
+        if not self.user_is_existed(user_id):
+            return None
+        self.__db.db_write('UPDATE construction_objects SET user_id = ? WHERE object_name = ?', (user_id, object_name, ))
     
     def delete_object(self, user_id, object_name):
         if not self.user_is_existed(user_id):
@@ -101,7 +136,7 @@ class DbAct:
     def db_export_xlsx(self):
         try:
             d = {'Имя': [], 'Фамилия': [], 'Никнейм': [], 'Номер телефона': []}
-            users = self.__db.db_read('SELECT first_name, last_name, nick_name, phone FROM users', ())
+            users = self.__db.db_read('SELECT full_name, nick_name, phone FROM users', ())
             if len(users) > 0:
                 for user in users:
                     for info in range(len(list(user))):

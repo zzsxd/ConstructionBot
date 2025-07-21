@@ -11,6 +11,12 @@ class Bot_inline_btns:
         self.__markup.add(one)
         return self.__markup
     
+    def foreman_buttons(self):
+        one = types.InlineKeyboardButton("Выбрать объект", callback_data="foreman_select_objects")
+        two = types.InlineKeyboardButton("Посмотреть информацию об обьекте", callback_data="foreman_check_object")
+        self.__markup.add(one, two)
+        return self.__markup
+    
     def manager_btns(self):
         one = types.InlineKeyboardButton('✅ Одобрить', callback_data="accept_reg")
         two = types.InlineKeyboardButton('❌ Отклонить', callback_data='reject_reg')
@@ -22,20 +28,45 @@ class Bot_inline_btns:
         one = types.InlineKeyboardButton("Добавить объект", callback_data="add_object")
         two = types.InlineKeyboardButton("Удалить объект", callback_data="delete_object")
         three = types.InlineKeyboardButton("Посмотреть объекты", callback_data="see_objects")
+        four = types.InlineKeyboardButton("Прикрепить прораба", callback_data="attach_foreman_to_object")
         # one = types.InlineKeyboardButton('🔹 Экспорировать', callback_data="export_users")
-        self.__markup.add(one, two, three)
+        self.__markup.add(one, two, three, four)
         return self.__markup
     
     def delete_object_buttons(self, data):
         markup = types.InlineKeyboardMarkup(row_width=1)
         for i in data:
-            aero = types.InlineKeyboardButton(i[0], callback_data=f'object{i[0]}')
+            aero = types.InlineKeyboardButton(i[1], callback_data=f'object{i[1]}')
             markup.add(aero)
         return markup
     
+    def get_object_buttons(self, data):
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        for i in data:
+            aero = types.InlineKeyboardButton(i[0], callback_data=f'foreman_object{i[0]}')
+            markup.add(aero)
+        return markup
     
-    def name_of_object(self):
-        pass
+    def get_info_object_buttons(self, data):
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        for i in data:
+            aero = types.InlineKeyboardButton(i[0], callback_data=f'foreman_info_object{i[0]}')
+            markup.add(aero)
+        return markup
+    
+    def choose_object_to_attach(self, data):
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        for i in data:
+            aero = types.InlineKeyboardButton(i[1], callback_data=f'choose_object_attach{i[1]}')
+            markup.add(aero)
+        return markup
+    
+    def choose_foreman_to_attach(self, data):
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        for i in data:
+            aero = types.InlineKeyboardButton(i[1], callback_data=f'choose_foreman_attach{i[0]}')
+            markup.add(aero)
+        return markup
 
     def name_of_where_work(self):
         one = types.InlineKeyboardButton("На кровле паркинга", callback_data="on_roof_parking")
@@ -90,10 +121,11 @@ class Bot_inline_btns:
         return self.__markup
 
     def curbstone_work(self):
-        one = types.InlineKeyboardButton("Дренирующие слои для территории", callback_data="yard_drainage")
+        one = types.InlineKeyboardButton("Дренирующие слои для территории (поребрик)", callback_data="yard_drainage_porebrik")
         two = types.InlineKeyboardButton("Гранитный поребрик (прямой)", callback_data="straight_granite_curb")
-        three = types.InlineKeyboardButton("Бордюр гранитный (прямой)", callback_data="straight_granite_border")
-        self.__markup.add(one, two, three)
+        three = types.InlineKeyboardButton("Дренирующие слои для территории (бордюр)", callback_data="yard_drainage_bordur")
+        four = types.InlineKeyboardButton("Бордюр гранитный (прямой)", callback_data="straight_granite_border")
+        self.__markup.add(one, two, three, four)
         return self.__markup
 
     def asphalt_driveways_work(self):

@@ -33,14 +33,52 @@ class DB:
                 row_id INTEGER primary key autoincrement not null,
                 user_id INTEGER,
                 object_name TEXT,
-                name_of_material TEXT,
-                norm REAL,
-                unit_of_measurement TEXT,
-                counterparty TEXT,
-                state_registration_number_of_equipment TEXT,
-                volume REAL,
-                cost REAL,
                 UNIQUE(row_id)
+                )
+            ''')
+            self.__cursor.execute('''
+            CREATE TABLE IF NOT EXISTS work_categories(
+            row_id INTEGER primary key autoincrement not null,
+            object_id INTEGER NOT NULL,
+            name TEXT,
+            FOREIGN KEY (object_id) REFERENCES construction_objects(row_id),
+            UNIQUE(row_id)
+                )
+            ''')
+            self.__cursor.execute('''
+            CREATE TABLE IF NOT EXISTS work_subcategories(
+            row_id INTEGER primary key autoincrement not null,
+            category_id INTEGER NOT NULL,
+            name TEXT,
+            FOREIGN KEY (category_id) REFERENCES work_categories(row_id),
+            UNIQUE(row_id)
+                )
+            ''')
+            self.__cursor.execute('''
+            CREATE TABLE IF NOT EXISTS work_types(
+            row_id INTEGER primary key autoincrement not null,
+            subcategory_id INTEGER NOT NULL,
+            name TEXT,
+            unit TEXT,
+            volume TEXT,
+            cost TEXT,
+            FOREIGN KEY (subcategory_id) REFERENCES work_subcategories(row_id),
+            UNIQUE(row_id)
+                )
+            ''')
+            self.__cursor.execute('''
+            CREATE TABLE IF NOT EXISTS work_materials(
+            row_id INTEGER primary key autoincrement not null,
+            work_type_id INTEGER NOT NULL,
+            name TEXT,
+            norm TEXT,
+            unit TEXT,
+            counterparty TEXT,
+            state_registration_number_vehicle TEXT,
+            volume TEXT,
+            cost TEXT,
+            FOREIGN KEY (work_type_id) REFERENCES work_types(row_id),
+            UNIQUE(row_id)
                 )
             ''')
             self.__db.commit()

@@ -106,113 +106,65 @@ def main():
             foreman_full_name = db_actions.get_user_system_key(foreman_user_id, "full_name")
             db_actions.set_user_is_foreman(foreman_user_id)
             db_actions.set_user_full_name(foreman_user_id, foreman_full_name)
-            bot.send_message(chat_id=foreman_user_id, text='✅ Регистрация пройдена!')
+            bot.send_message(chat_id=foreman_user_id, text='✅ Регистрация пройдена!\n\nПропишите /start для начала')
         elif call.data == "reject_reg":
             foreman_user_id = db_actions.get_user_id_from_topic(call.message.reply_to_message.id)
             bot.send_message(chat_id=foreman_user_id, text='❌ Регистрация не пройдена! Повторите попытку')
-
-        # ПРОРАБ ОБРАБОТКА
         elif db_actions.user_is_foreman(user_id):
-            # ОБРАБОТКА ОБЪЕКТОВ
-            if call.data[:14] == "foreman_object":
-                object_name = call.data[:14]
-                bot.send_message(user_id, "Выберите название работы", reply_markup=buttons.name_of_where_work())
-            if call.data[:19] == "foreman_info_object":
-                object_name = call.data[:19]
-                bot.send_message(user_id, "Выберите название работы")
             # СТАРТОВАЯ ОБРАБОТКА ПРОРАБА
-            elif call.data == "foreman_select_objects":
+            if call.data == "foreman_select_objects":
                 objects = db_actions.get_foreman_objects(user_id)
-                bot.send_message(user_id, "Выберите свой объект", reply_markup=buttons.get_object_buttons(objects))
+                if objects:
+                    bot.send_message(user_id, "Выберите свой объект", reply_markup=buttons.get_object_buttons(objects))
+                else:
+                    bot.send_message(user_id, "Объекты не найдены")
             elif call.data == "foreman_check_object":
                 objects = db_actions.get_foreman_objects(user_id)
-                bot.send_message(user_id, "Выбери объект", reply_markup=buttons.get_info_object_buttons(objects))
-            # НА КРОВЛЕ ПАРКИНГА КНОПКИ ОБРАБОТКА
-            elif call.data == "on_roof_parking":
-                bot.send_message(user_id, "Выберите тип работы", reply_markup=buttons.roof_parking_work())
-            elif call.data == "curb_curbstone":
-                bot.send_message(user_id, "Выбери вид работы", reply_markup=buttons.curb_and_curbstone_work())
-            elif call.data == "sidewalk_area":
-                bot.send_message(user_id, "Выбери вид работы", reply_markup=buttons.sidewalk_blind_area_work())
-            elif call.data == "tartan_coating":
-                bot.send_message(user_id, "Выбери вид работы", reply_markup=buttons.tartan_covering_work())
+                if objects:
+                    bot.send_message(user_id, "Выбери объект", reply_markup=buttons.get_info_object_buttons(objects))
+                else:
+                    bot.send_message(user_id, "Объекты не найдены")
+            elif call.data[:14] == "foreman_object":
+                db_actions.set_user_system_key(user_id, "object_id", call.data[14:])
+                bot.send_message(user_id, "Выберите действие", reply_markup=buttons.foreman_object_buttons())
+            
+            elif call.data == "add_work":
+                bot.send_message(user_id, "Выберите тип работы", reply_markup=buttons.foreman_choose_type_work())
 
-            # В ГРАНИЦЕ УЧАСТКА И ПОДСЧЕТА РАБОТ ОБРАБОТКА
-            elif call.data == "in_site_boundary":
-                bot.send_message(user_id, "Выберите тип работы", reply_markup=buttons.site_boundary_work())
-            elif call.data == "earth_works":
-                bot.send_message(user_id, "Выбери вид работы", reply_markup=buttons.earthworks_work())
-            elif call.data == "border_stone":
-                bot.send_message(user_id, "Выбери вид работы", reply_markup=buttons.curbstone_work())
-            elif call.data == "asphalt_roads":
-                bot.send_message(user_id, "Выбери вид работы", reply_markup=buttons.asphalt_driveways_work())
-            elif call.data == "sidewalk_blind":
-                bot.send_message(user_id, "Выбери вид работы", reply_markup=buttons.sidewalk_blind_word())
+            elif call.data == "foreman_add_category":
+                bot.send_message(user_id, "Введите название категории")
+                db_actions.set_user_system_key(user_id, "index", 2)
+            
+            elif call.data == "foreman_add_subcategory":
+                categories = db_actions.get_work_categories(user_id)
+                if categories:
+                    bot.send_message(user_id, "Выберите категорию", reply_markup=buttons.foreman_choose_add_subcategory(categories))
+                else:
+                    bot.send_message(user_id, "Категории не найдены")
+            elif call.data[:13] == "work_category":
+                db_actions.set_user_system_key(user_id, "category_id", call.data[13:])
+                bot.send_message(user_id, "Введите название подкатегории")
+                db_actions.set_user_system_key(user_id, "index", 3)
 
-            # БОРДЮР И ПОРЕБРИК
-            elif call.data == "hidden_steel_curbs":
-                bot.send_message(user_id, "Введите название материала")
-            elif call.data == "drainage_for_curb":
-                pass
-            elif call.data == "granite_curb_100208":
-                pass
-            elif call.data == "drainage_for_border":
-                pass
-            elif call.data == "granite_border_1003015":
-                pass
-            # ТРОТУАР И ОТМОСТКА
-            elif call.data == "pavement_dismantling":
-                pass
-            elif call.data == "drainage_layers_30cm":
-                pass
-            elif call.data == "geotextile_laying":
-                pass
-            elif call.data == "sidewalk_type1":
-                pass
-            # ТАРТАНОВОЕ ПОКРЫТИЕ
-            elif call.data == "drainage_300_400":
-                pass
-            elif call.data == "concrete_base_tartan":
-                pass
-            # ЗЕМЛЯНЫЕ РАБОТЫ
-            elif call.data == "ground_leveling":
-                pass
-            elif call.data == "pit_excavation":
-                pass
-            elif call.data == "compaction":
-                pass
-            elif call.data == "soil_transport_1km":
-                pass
-            # БОРТОВОЙ КАМЕНЬ
-            elif call.data == "yard_drainage_porebrik":
-                pass
-            elif call.data == "straight_granite_curb":
-                pass
-            elif call.data == "yard_drainage_bordur":
-                pass
-            elif call.data == "straight_granite_border":
-                pass
-            # АСФАЛЬТ ПО ПРОЕЗДАМ
-            elif call.data == "base_stabilization":
-                pass
-            elif call.data == "gravel_base":
-                pass
-            elif call.data == "pre_KZ_pouring":
-                pass
-            elif call.data == "coarse_asphalt_6cm":
-                pass
-            elif call.data == "pre_MZ_pouring":
-                pass
-            elif call.data == "fine_asphalt_5cm":
-                pass
-            # ТРОТУАР, ОТМОСТКА
-            elif call.data == "drainage_15cm":
-                pass
-            elif call.data == "sidewalk_coating":
-                pass
+            elif call.data == "foreman_add_type_work":
+                categories = db_actions.get_work_categories(user_id)
+                if categories:
+                    bot.send_message(user_id, "Выберите категорию", reply_markup=buttons.foreman_choose_add_work_types(categories))
+                else:
+                        bot.send_message(user_id, "Категории не найдены")
 
-
-
+            elif call.data[:14] == "category_work1":
+                db_actions.set_user_system_key(user_id, "category_id", call.data[14:])
+                subcategories = db_actions.get_work_subcategories(user_id)
+                if subcategories:
+                    bot.send_message(user_id, "Выберите подкатегорию", reply_markup=buttons.foreman_need_choose_subcategory(subcategories))
+                else:
+                    bot.send_message(user_id, "Подкатегории не найдены")
+            elif call.data[:17] == "work_subcategory1":
+                db_actions.set_user_system_key(user_id, "subcategory_id", call.data[17:])
+                bot.send_message(user_id, "Введите название работы")
+                db_actions.set_user_system_key(user_id, "index", 4)
+                
     @bot.message_handler(content_types=['text', 'photo'])
     def text_message(message):
         buttons = Bot_inline_btns()
@@ -233,12 +185,49 @@ def main():
                 bot.send_message(user_id, '⏳ Ваша заявка принята, ожидайте!')
                 db_actions.set_user_system_key(user_id, "index", None)
             elif code == 1:
-                db_actions.set_user_system_key(user_id, "index", None)
                 db_actions.write_new_object(user_id, user_input)
                 object_names = db_actions.get_all_objects(user_id)
                 objects_list = "\n".join([f"{i[1]}" for i in object_names])
                 bot.send_message(user_id, "Новый объект записан, вот список существующих объектов:\n" \
                 f"{objects_list}")
+                db_actions.set_user_system_key(user_id, "index", None)
+            elif code == 2:
+                # user_input - category name
+                object_id = db_actions.get_user_system_key(user_id, "object_id")
+                db_actions.add_work_categories(user_id, object_id, user_input)
+                bot.send_message(user_id, "Категория записана")
+                db_actions.set_user_system_key(user_id, "index", None)
+
+            elif code == 3:
+                category_id = db_actions.get_user_system_key(user_id, "category_id")
+                db_actions.add_work_subcategories(user_id, category_id, user_input)
+                bot.send_message(user_id, "Подкатегория добавлена")
+            
+            elif code == 4:
+                db_actions.set_user_system_key(user_id, "work_type_name", user_input)
+                db_actions.set_user_system_key(user_id, "index", 5)
+                bot.send_message(user_id, "Введите единицу измерения")
+            
+            elif code == 5:
+                db_actions.set_user_system_key(user_id, "work_type_unit", user_input)
+                db_actions.set_user_system_key(user_id, "index", 6)
+                bot.send_message(user_id, "Введите объем")
+
+            elif code == 6:
+                db_actions.set_user_system_key(user_id, "work_type_volume", user_input)
+                db_actions.set_user_system_key(user_id, "index", 7)
+                bot.send_message(user_id, "Введите цену")
+
+            elif code == 7:
+                subcategory_id = db_actions.get_user_system_key(user_id, "subcategory_id")
+                name = db_actions.get_user_system_key(user_id, "work_type_name")
+                unit = db_actions.get_user_system_key(user_id, "work_type_unit")
+                volume = db_actions.get_user_system_key(user_id, "work_type_volume")
+                db_actions.add_work_type(user_id, subcategory_id, name, unit, volume, user_input)
+                bot.send_message(user_id, "Тип работы записан")                
+                db_actions.set_user_system_key(user_id, "index", None)
+
+
 
     bot.polling(none_stop=True)
 

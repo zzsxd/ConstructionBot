@@ -23,7 +23,7 @@ class DbAct:
                 self.__db.db_write(
                     'INSERT INTO users (user_id, full_name, nick_name, system_data, is_admin, is_foreman) '
                     'VALUES (?, ?, ?, ?, ?, ?)',
-                    (user_id, full_name, nick_name, json.dumps({"index": None, "attach_object_name": None, "full_name": None}), is_admin, is_foreman))
+                    (user_id, full_name, nick_name, json.dumps({"index": None, "attach_object_name": None, "full_name": None, "object_id": None, "category_id": None, "subcategory_id": None, "work_type_name": None, "work_type_unit": None, "work_type_volume": None}), is_admin, is_foreman))
                 
     def set_user_id_in_topic(self, user_id, topic_id):
         if not self.user_is_existed(user_id):
@@ -108,7 +108,7 @@ class DbAct:
     def get_foreman_objects(self, user_id):
         if not self.user_is_existed(user_id):
             return None
-        return self.__db.db_read('SELECT object_name FROM construction_objects WHERE user_id = ?', (user_id, ))
+        return self.__db.db_read('SELECT row_id, object_name FROM construction_objects WHERE user_id = ?', (user_id, ))
     
 
     def get_name_from_user_id(self, user_id):
@@ -132,6 +132,31 @@ class DbAct:
         self.__db.db_write('DELETE FROM construction_objects WHERE object_name = ?', (object_name, ))
     
 
+    def add_work_categories(self, user_id, object_id, name):
+        if not self.user_is_existed(user_id):
+            return None
+        self.__db.db_write('INSERT INTO work_categories (object_id, name) VALUES (?, ?)', (object_id, name,))
+
+    def get_work_categories(self, user_id):
+        if not self.user_is_existed(user_id):
+            return None
+        return self.__db.db_read('SELECT row_id, name FROM work_categories', ())
+
+    def add_work_subcategories(self, user_id, category_id, name):
+        if not self.user_is_existed(user_id):
+            return None
+        self.__db.db_write('INSERT INTO work_subcategories (category_id, name) VALUES (?, ?)', (category_id, name,))
+    
+    def get_work_subcategories(self, user_id):
+        if not self.user_is_existed(user_id):
+            return None
+        return self.__db.db_read('SELECT row_id, name FROM work_subcategories', ())
+    
+    def add_work_type(self, user_id, subcategory_id, name, unit, volume, cost):
+        if not self.user_is_existed(user_id):
+            return None
+        self.__db.db_write('INSERT INTO work_types (subcategory_id, name, unit, volume, cost) VALUES (?, ?, ?, ?, ?)', (subcategory_id, name, unit, volume, cost,))
+    
 
     def db_export_xlsx(self):
         try:

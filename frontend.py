@@ -13,8 +13,7 @@ class Bot_inline_btns:
     
     def foreman_buttons(self):
         one = types.InlineKeyboardButton("Выбрать объект", callback_data="foreman_select_objects")
-        two = types.InlineKeyboardButton("Посмотреть информацию об обьекте", callback_data="foreman_check_object")
-        self.__markup.add(one, two)
+        self.__markup.add(one)
         return self.__markup
     
     def manager_btns(self):
@@ -47,13 +46,6 @@ class Bot_inline_btns:
             markup.add(aero)
         return markup
     
-    def get_info_object_buttons(self, data):
-        markup = types.InlineKeyboardMarkup(row_width=1)
-        for i in data:
-            aero = types.InlineKeyboardButton(i[1], callback_data=f'foreman_info_object{i[0]}')
-            markup.add(aero)
-        return markup
-    
     def choose_object_to_attach(self, data):
         markup = types.InlineKeyboardMarkup(row_width=1)
         for i in data:
@@ -71,10 +63,10 @@ class Bot_inline_btns:
     def foreman_object_buttons(self):
         one = types.InlineKeyboardButton("Добавить работу", callback_data="add_work")
         two = types.InlineKeyboardButton("Удалить работу", callback_data="delete_work")
-        three = types.InlineKeyboardButton("Редактировать работу", callback_data="update_work")
+        three = types.InlineKeyboardButton("Удалить материалы", callback_data="delete_materials")
         four = types.InlineKeyboardButton("Внести материалы", callback_data="add_materials")
         five = types.InlineKeyboardButton("Просмотреть отчет", callback_data="get_report")
-        self.__markup.add(one, two, three, four)
+        self.__markup.add(one, two, four, three, five)
         return self.__markup
 
 
@@ -152,5 +144,33 @@ class Bot_inline_btns:
         markup = types.InlineKeyboardMarkup(row_width=1)
         for i in data:
             aero = types.InlineKeyboardButton(i[1], callback_data=f'foreman_work_type{i[0]}')
+            markup.add(aero)
+        return markup
+    
+    def del_mat_category(self, data):
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        for i in data:
+            aero = types.InlineKeyboardButton(i[1], callback_data=f'delete_mat_categ{i[0]}')
+            markup.add(aero)
+        return markup
+    
+    def del_mat_subcategory(self, data):
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        for i in data:
+            aero = types.InlineKeyboardButton(i[1], callback_data=f'delete_mat_subcateg{i[0]}')
+            markup.add(aero)
+        return markup
+    
+    def del_mat_work_type(self, data):
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        for i in data:
+            aero = types.InlineKeyboardButton(i[1], callback_data=f'delete_mat_type_work{i[0]}')
+            markup.add(aero)
+        return markup
+    
+    def delete_material_buttons(self, data):
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        for i in data:
+            aero = types.InlineKeyboardButton(i[1], callback_data=f'material_delete{i[0]}')
             markup.add(aero)
         return markup

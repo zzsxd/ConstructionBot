@@ -118,28 +118,18 @@ def main():
                     bot.send_message(user_id, "Выберите свой объект", reply_markup=buttons.get_object_buttons(objects))
                 else:
                     bot.send_message(user_id, "Объекты не найдены")
-            elif call.data == "foreman_check_object":
-                objects = db_actions.get_foreman_objects(user_id)
-                if objects:
-                    bot.send_message(user_id, "Выбери объект", reply_markup=buttons.get_info_object_buttons(objects))
-                else:
-                    bot.send_message(user_id, "Объекты не найдены")
             elif call.data[:14] == "foreman_object":
                 db_actions.set_user_system_key(user_id, "object_id", call.data[14:])
                 bot.send_message(user_id, "Выберите действие", reply_markup=buttons.foreman_object_buttons())
-            
             elif call.data == "add_work":
                 bot.send_message(user_id, "Выберите тип работы", reply_markup=buttons.foreman_choose_type_work())
-            
             elif call.data == "delete_work":
                 bot.send_message(user_id, "Выберите тип работы", reply_markup=buttons.foreman_choose_delete_type_work())
-
             elif call.data == "foreman_delete_category":
                 object_id = db_actions.get_user_system_key(user_id, "object_id")
                 category = db_actions.get_work_categories(user_id, object_id)
                 bot.send_message(user_id, "Выберите категорию для удаления\n\n" \
                 "Учтите, при удалении категории - удалятся подкатегории и виды работ!", reply_markup=buttons.delete_category_buttons(category))
-
             elif call.data[:20] == "delete_work_category":
                 category_id = call.data[20:]
                 db_actions.delete_work_categories(user_id, category_id)
@@ -161,12 +151,9 @@ def main():
                 subcategory_id = db_actions.get_user_system_key(user_id, "subcategory_id")
                 work_type = db_actions.get_work_type(user_id, subcategory_id)
                 bot.send_message(user_id, "Выберите тип работы для удаления", reply_markup=buttons.delete_work_type(work_type))
-
-
             elif call.data == "foreman_add_category":
                 bot.send_message(user_id, "Введите название категории")
                 db_actions.set_user_system_key(user_id, "index", 2)
-            
             elif call.data == "foreman_add_subcategory":
                 object_id = db_actions.get_user_system_key(user_id, "object_id")
                 categories = db_actions.get_work_categories(user_id, object_id)
@@ -178,7 +165,6 @@ def main():
                 db_actions.set_user_system_key(user_id, "category_id", call.data[13:])
                 bot.send_message(user_id, "Введите название подкатегории")
                 db_actions.set_user_system_key(user_id, "index", 3)
-
             elif call.data == "foreman_add_type_work":
                 object_id = db_actions.get_user_system_key(user_id, "object_id")
                 categories = db_actions.get_work_categories(user_id, object_id)
@@ -186,7 +172,6 @@ def main():
                     bot.send_message(user_id, "Выберите категорию", reply_markup=buttons.foreman_choose_add_work_types(categories))
                 else:
                         bot.send_message(user_id, "Категории не найдены")
-
             elif call.data[:14] == "category_work1":
                 db_actions.set_user_system_key(user_id, "category_id", call.data[14:])
                 subcategories = db_actions.get_work_subcategories(user_id, category_id=call.data[14:])
@@ -198,7 +183,6 @@ def main():
                 db_actions.set_user_system_key(user_id, "subcategory_id", call.data[17:])
                 bot.send_message(user_id, "Введите название работы")
                 db_actions.set_user_system_key(user_id, "index", 4)
-
             elif call.data == "add_materials":
                 object_id = db_actions.get_user_system_key(user_id, "object_id")
                 category = db_actions.get_work_categories(user_id, object_id)
@@ -217,14 +201,26 @@ def main():
                 db_actions.set_user_system_key(user_id, "subcategory_id", call.data[19:])
                 work_type = db_actions.get_work_type(user_id, call.data[19:])
                 bot.send_message(user_id, "Выберите тип работы", reply_markup=buttons.foreman_choose_work_type(work_type))
-
             elif call.data[:17] == "foreman_work_type":
                 db_actions.set_user_system_key(user_id, "work_type_id", call.data[17:])
                 bot.send_message(user_id, "Введите материал")
                 db_actions.set_user_system_key(user_id, "index", 8)
-
-
-
+            elif call.data == "delete_materials":
+                object_id = db_actions.get_user_system_key(user_id, "object_id")
+                category = db_actions.get_work_categories(user_id, object_id)
+                bot.send_message(user_id, "Выберите категорию", reply_markup=buttons.del_mat_category(category))
+            elif call.data[:16] == "delete_mat_categ":
+                subcategory = db_actions.get_work_subcategories(user_id, call.data[16:])
+                bot.send_message(user_id, "Выберите подкатегорию", reply_markup=buttons.del_mat_subcategory(subcategory))
+            elif call.data[:19] == "delete_mat_subcateg":
+                work_types = db_actions.get_work_type(user_id, call.data[19:])
+                bot.send_message(user_id, "Выберите вид работы", reply_markup=buttons.del_mat_work_type(work_types))
+            elif call.data[:20] == "delete_mat_type_work":
+                materials = db_actions.get_work_material(user_id, call.data[20:])
+                bot.send_message(user_id, "Выбери материал для удаления", reply_markup=buttons.delete_material_buttons(materials))
+            elif call.data[:15] == "material_delete":
+                db_actions.delete_work_material(user_id, call.data[15:])
+                bot.send_message(user_id, "Материал удален")
             
     @bot.message_handler(content_types=['text', 'photo'])
     def text_message(message):
@@ -314,12 +310,12 @@ def main():
                 db_actions.set_user_system_key(user_id, "index", 14)
             elif code == 14:
                 work_type_id = db_actions.get_user_system_key(user_id, "work_type_id")
-                name = db_actions.get_user_system_key("user_id", "materials_name")
-                norm = db_actions.get_user_system_key("user_id", "materials_norm")
-                unit = db_actions.get_user_system_key("user_id", "materials_unit")
-                counterparty = db_actions.get_user_system_key("user_id", "materials_counterparty")
-                registration_number = db_actions.get_user_system_key("user_id", "materials_registration_number")
-                volume = db_actions.get_user_system_key("user_id", "materials_volume")
+                name = db_actions.get_user_system_key(user_id, "material_name")
+                norm = db_actions.get_user_system_key(user_id, "material_norm")
+                unit = db_actions.get_user_system_key(user_id, "material_unit")
+                counterparty = db_actions.get_user_system_key(user_id, "material_counterparty")
+                registration_number = db_actions.get_user_system_key(user_id, "material_registration_number")
+                volume = db_actions.get_user_system_key(user_id, "material_volume")
                 db_actions.add_work_material(user_id, work_type_id, name, norm, unit, counterparty, registration_number, volume, user_input)
                 bot.send_message(user_id, "Материал успешно записан")
 

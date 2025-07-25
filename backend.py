@@ -182,6 +182,16 @@ class DbAct:
             return None
         self.__db.db_write('INSERT INTO work_materials (work_type_id, name, norm, unit, counterparty, state_registration_number_vehicle, volume, cost) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', (work_type_id, name, norm, unit, counterparty, registration_number, volume, cost,))
 
+    def get_work_material(self, user_id, work_type_id):
+        if not self.user_is_existed(user_id):
+            return None
+        return self.__db.db_read('SELECT row_id, name, norm, unit, counterparty, state_registration_number_vehicle, volume, cost FROM work_materials WHERE work_type_id = ?', (work_type_id,))
+    
+    def delete_work_material(self, user_id, row_id):
+        if not self.user_is_existed(user_id):
+            return None
+        self.__db.db_write('DELETE FROM work_materials WHERE row_id = ?', (row_id,))
+
     def db_export_xlsx(self):
         try:
             d = {'Имя': [], 'Фамилия': [], 'Никнейм': [], 'Номер телефона': []}

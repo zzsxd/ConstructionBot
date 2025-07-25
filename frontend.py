@@ -12,7 +12,7 @@ class Bot_inline_btns:
         return self.__markup
     
     def foreman_buttons(self):
-        one = types.InlineKeyboardButton("Выбрать объект", callback_data="foreman_select_objects")
+        one = types.InlineKeyboardButton("📄 Выбрать объект", callback_data="foreman_select_objects")
         self.__markup.add(one)
         return self.__markup
     
@@ -24,10 +24,10 @@ class Bot_inline_btns:
     
     
     def admin_buttons(self):
-        one = types.InlineKeyboardButton("Добавить объект", callback_data="add_object")
-        two = types.InlineKeyboardButton("Удалить объект", callback_data="delete_object")
-        three = types.InlineKeyboardButton("Посмотреть объекты", callback_data="see_objects")
-        four = types.InlineKeyboardButton("Прикрепить прораба", callback_data="attach_foreman_to_object")
+        one = types.InlineKeyboardButton("➕ Добавить объект", callback_data="add_object")
+        two = types.InlineKeyboardButton("🗑️ Удалить объект", callback_data="delete_object")
+        three = types.InlineKeyboardButton("📇 Посмотреть объекты", callback_data="see_objects")
+        four = types.InlineKeyboardButton("📌 Прикрепить прораба", callback_data="attach_foreman_to_object")
         # one = types.InlineKeyboardButton('🔹 Экспорировать', callback_data="export_users")
         self.__markup.add(one, two, three, four)
         return self.__markup
@@ -61,26 +61,26 @@ class Bot_inline_btns:
         return markup
     
     def foreman_object_buttons(self):
-        one = types.InlineKeyboardButton("Добавить работу", callback_data="add_work")
-        two = types.InlineKeyboardButton("Удалить работу", callback_data="delete_work")
-        three = types.InlineKeyboardButton("Удалить материалы", callback_data="delete_materials")
-        four = types.InlineKeyboardButton("Внести материалы", callback_data="add_materials")
-        five = types.InlineKeyboardButton("Просмотреть отчет", callback_data="get_report")
+        one = types.InlineKeyboardButton("➕ Добавить работу", callback_data="add_work")
+        two = types.InlineKeyboardButton("🗑️ Удалить работу", callback_data="delete_work")
+        three = types.InlineKeyboardButton("🗑️ Удалить материалы", callback_data="delete_materials")
+        four = types.InlineKeyboardButton("➕ Внести материалы", callback_data="add_materials")
+        five = types.InlineKeyboardButton("📇 Просмотреть отчет", callback_data="get_report")
         self.__markup.add(one, two, four, three, five)
         return self.__markup
 
 
     def foreman_choose_type_work(self):
-        one = types.InlineKeyboardButton("Добавить категорию", callback_data="foreman_add_category")
-        two = types.InlineKeyboardButton("Добавить подкатегорию", callback_data="foreman_add_subcategory")
-        three = types.InlineKeyboardButton("Добавить тип работы", callback_data="foreman_add_type_work")
+        one = types.InlineKeyboardButton("➕ Добавить категорию", callback_data="foreman_add_category")
+        two = types.InlineKeyboardButton("➕ Добавить подкатегорию", callback_data="foreman_add_subcategory")
+        three = types.InlineKeyboardButton("➕ Добавить тип работы", callback_data="foreman_add_type_work")
         self.__markup.add(one, two, three)
         return self.__markup
     
     def foreman_choose_delete_type_work(self):
-        one = types.InlineKeyboardButton("Удалить категорию", callback_data="foreman_delete_category")
-        two = types.InlineKeyboardButton("Удалить подкатегорию", callback_data="foreman_delete_subcategory")
-        three = types.InlineKeyboardButton("Удалить тип работы", callback_data="foreman_delete_type_work")
+        one = types.InlineKeyboardButton("🗑️ Удалить категорию", callback_data="foreman_delete_category")
+        two = types.InlineKeyboardButton("🗑️ Удалить подкатегорию", callback_data="foreman_delete_subcategory")
+        three = types.InlineKeyboardButton("🗑️ Удалить тип работы", callback_data="foreman_delete_type_work")
         self.__markup.add(one, two, three)
         return self.__markup
     

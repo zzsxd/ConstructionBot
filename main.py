@@ -184,6 +184,11 @@ def main():
                     bot.send_message(user_id, "Выберите категорию", reply_markup=buttons.foreman_choose_add_work_types(categories))
                 else:
                         bot.send_message(user_id, "Категории не найдены")
+            elif call.data == "get_report":
+                object_id = db_actions.get_user_system_key(user_id, "object_id")
+                db_actions.db_export_object_report(object_id)
+                bot.send_document(user_id, open(config.get_config()['xlsx_path'], 'rb'))
+                os.remove(config.get_config()['xlsx_path'])
             elif call.data[:14] == "category_work1":
                 db_actions.set_user_system_key(user_id, "category_id", call.data[14:])
                 subcategories = db_actions.get_work_subcategories(user_id, category_id=call.data[14:])

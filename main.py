@@ -415,7 +415,7 @@ def main():
                 db_actions.set_user_system_key(user_id, "index", 26)
             elif code == 26:
                 object_id = db_actions.get_user_system_key(user_id, "object_id")
-                date = db_actions.get_user_system_key(user_id, "comimg_date")
+                date = db_actions.get_user_system_key(user_id, "coming_date")
                 name = db_actions.get_user_system_key(user_id, "coming_name")
                 unit = db_actions.get_user_system_key(user_id, "coming_unit")
                 volume = db_actions.get_user_system_key(user_id, "coming_volume")

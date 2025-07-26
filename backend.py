@@ -366,7 +366,7 @@ class DbAct:
                 
                 # 6. Лист "Приход"
                 coming_data = []
-                coming_columns = ['№', 'Дата', 'Наименование', 'Ед.изм.', 'Объем', 'Поставщик', 'Цена', 'ИТОГО']
+                coming_columns = ['№', 'Дата', 'Наименование', 'Ед.изм.', 'Объем', 'Поставщик', 'Цена', 'ИТОГО', 'ПРИМЕЧАНИЕ']
                 
                 comings = self.__db.db_read(
                     'SELECT date, name, unit, volume, supplier, cost '
@@ -382,7 +382,8 @@ class DbAct:
                         safe_float(volume),
                         supplier,
                         safe_float(cost),
-                        safe_float(safe_float(volume) * safe_float(cost))
+                        safe_float(safe_float(volume) * safe_float(cost)),
+                        None
                     ])
                 
                 coming_df = pd.DataFrame(coming_data, columns=coming_columns)

@@ -56,6 +56,14 @@ def main():
                     object_name = call.data[6:]
                     db_actions.delete_object(user_id, object_name)
                     bot.send_message(user_id, "Объект удален! ✅")
+                elif call.data == "export_object_data":
+                    objects = db_actions.get_admin_objects(user_id)
+                    bot.send_message(user_id, "Выберите объект", reply_markup=buttons.choose_object_export(objects))
+                elif call.data[:17] == "export_objectdata":
+                    object_id = call.data[17:]
+                    db_actions.db_export_object_report(object_id)
+                    bot.send_document(user_id, open(config.get_config()['xlsx_path'], 'rb'))
+                    os.remove(config.get_config()['xlsx_path'])
                 elif call.data == "see_objects":
                     try:
                         # Получаем список всех объектов пользователя
@@ -121,6 +129,10 @@ def main():
             elif call.data[:14] == "foreman_object":
                 db_actions.set_user_system_key(user_id, "object_id", call.data[14:])
                 bot.send_message(user_id, "Выберите действие", reply_markup=buttons.foreman_object_buttons())
+            elif call.data == "go_work":
+                bot.send_message(user_id, 'Выберите пункт', reply_markup=buttons.foreman_work_object())
+            elif call.data == "go_materials":
+                bot.send_message(user_id, "Выберите пункт", reply_markup=buttons.foreman_material_object())
             elif call.data == "add_work":
                 bot.send_message(user_id, "Выберите тип работы", reply_markup=buttons.foreman_choose_type_work())
             elif call.data == "delete_work":
@@ -133,15 +145,15 @@ def main():
             elif call.data[:20] == "delete_work_category":
                 category_id = call.data[20:]
                 db_actions.delete_work_categories(user_id, category_id)
-                bot.send_message(user_id, "Категория удалена")
+                bot.send_message(user_id, "Категория удалена ✅")
             elif call.data[:23] == "delete_work_subcategory":
                 subcategory_id = call.data[23:]
                 db_actions.delete_work_subcategories(user_id, subcategory_id)
-                bot.send_message(user_id, "Подкатегория удалена")
+                bot.send_message(user_id, "Подкатегория удалена ✅")
             elif call.data[:16] == "delete_work_type":
                 work_type_id = call.data[16:]
                 db_actions.delete_work_type(user_id, work_type_id)
-                bot.send_message(user_id, "Тип работы удален")
+                bot.send_message(user_id, "Тип работы удален ✅")
             elif call.data == "foreman_delete_subcategory":
                 category_id = db_actions.get_user_system_key(user_id, "category_id")
                 subcategory = db_actions.get_work_subcategories(user_id, category_id)
@@ -220,8 +232,16 @@ def main():
                 bot.send_message(user_id, "Выбери материал для удаления", reply_markup=buttons.delete_material_buttons(materials))
             elif call.data[:15] == "material_delete":
                 db_actions.delete_work_material(user_id, call.data[15:])
-                bot.send_message(user_id, "Материал удален")
-            
+                bot.send_message(user_id, "Материал удален ✅")
+            elif call.data == "go_technique":
+                bot.send_message(user_id, "Выберите пункт", reply_markup=buttons.foreman_choose_technique())
+            elif call.data == "add_technique":
+                bot.send_message(user_id, "Введите название техники")
+                db_actions.set_user_system_key(user_id, "index", 15)
+            elif call.data == "go_coming":
+                bot.send_message(user_id, "Введите дату прихода")
+                db_actions.set_user_system_key(user_id, "index", 21)
+
     @bot.message_handler(content_types=['text', 'photo'])
     def text_message(message):
         buttons = Bot_inline_btns()
@@ -318,8 +338,67 @@ def main():
                 volume = db_actions.get_user_system_key(user_id, "material_volume")
                 db_actions.add_work_material(user_id, work_type_id, name, norm, unit, counterparty, registration_number, volume, user_input)
                 bot.send_message(user_id, "Материал успешно записан")
-
-
+            elif code == 15:
+                db_actions.set_user_system_key(user_id, "technique_name", user_input)
+                bot.send_message(user_id, "Введите контрагента")
+                db_actions.set_user_system_key(user_id, "index", 16)
+            elif code == 16:
+                db_actions.set_user_system_key(user_id, "technique_contragent", user_input)
+                bot.send_message(user_id, "Введите государственный № техники")
+                db_actions.set_user_system_key(user_id, "index", 17)
+            elif code == 17:
+                db_actions.set_user_system_key(user_id, "technique_number", user_input)
+                bot.send_message(user_id, "Введите единицу измерения")
+                db_actions.set_user_system_key(user_id, "index", 18)
+            elif code == 18:
+                db_actions.set_user_system_key(user_id, "technique_unit", user_input)
+                bot.send_message(user_id, "Введите объем (кол-во часов)")
+                db_actions.set_user_system_key(user_id, "index", 19)
+            elif code == 19:
+                db_actions.set_user_system_key(user_id, "technique_volume", user_input)
+                bot.send_message(user_id, "Введите цену за час")
+                db_actions.set_user_system_key(user_id, "index", 20)
+            elif code == 20:
+                object_id = name = db_actions.get_user_system_key(user_id, "object_id")
+                name = db_actions.get_user_system_key(user_id, "technique_name")
+                contragent = db_actions.get_user_system_key(user_id, "technique_contagent")
+                number = db_actions.get_user_system_key(user_id, "technique_number")
+                unit = db_actions.get_user_system_key(user_id, "technique_unit")
+                volume = db_actions.get_user_system_key(user_id, "technique_volume")
+                db_actions.add_technique(user_id, object_id, name, contragent, number, unit, volume, user_input)
+                bot.send_message(user_id, "✅ Данные записаны")
+            elif code == 21:
+                bot.send_message(user_id, "Введите дату")
+                db_actions.set_user_system_key(user_id, "index", 22)
+            elif code == 22:
+                db_actions.set_user_system_key(user_id, "coming_date", user_input)
+                bot.send_message(user_id, "Введите название прихода")
+                db_actions.set_user_system_key(user_id, "index", 23)
+            elif code == 23:
+                db_actions.set_user_system_key(user_id, "coming_name", user_input)
+                bot.send_message(user_id, "Введите единицу измерения")
+                db_actions.set_user_system_key(user_id, "index", 24)
+            elif code == 24:
+                db_actions.set_user_system_key(user_id, "coming_unit", user_input)
+                bot.send_message(user_id, "Введите объем")
+                db_actions.set_user_system_key(user_id, "index", 25)
+            elif code == 25:
+                db_actions.set_user_system_key(user_id, "coming_volume", user_input)
+                bot.send_message(user_id, "Введите поставщика")
+                db_actions.set_user_system_key(user_id, "index", 26)
+                db_actions.set_user_system_key(user_id, "coming_supplier", user_input)
+            elif code == 26:
+                bot.send_message(user_id, "Введите цену без НДС")
+                db_actions.set_user_system_key(user_id, "index", 27)
+            elif code == 27:
+                object_id = db_actions.get_user_system_key(user_id, "object_id")
+                date = db_actions.get_user_system_key(user_id, "comimg_date")
+                name = db_actions.get_user_system_key(user_id, "coming_name")
+                unit = db_actions.get_user_system_key(user_id, "coming_unit")
+                volume = db_actions.get_user_system_key(user_id, "coming_volume")
+                supplier = db_actions.get_user_system_key(user_id, "coming_supplier")
+                db_actions.add_list_coming(user_id, object_id, date, name, unit, volume, supplier, user_input)
+                bot.send_message(user_id, "✅ Данные записаны")
 
     bot.polling(none_stop=True)
 

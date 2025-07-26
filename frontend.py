@@ -28,9 +28,16 @@ class Bot_inline_btns:
         two = types.InlineKeyboardButton("🗑️ Удалить объект", callback_data="delete_object")
         three = types.InlineKeyboardButton("📇 Посмотреть объекты", callback_data="see_objects")
         four = types.InlineKeyboardButton("📌 Прикрепить прораба", callback_data="attach_foreman_to_object")
-        # one = types.InlineKeyboardButton('🔹 Экспорировать', callback_data="export_users")
-        self.__markup.add(one, two, three, four)
+        six = types.InlineKeyboardButton('🔹 Экспорировать', callback_data="export_object_data")
+        self.__markup.add(one, two, three, four, six)
         return self.__markup
+    
+    def choose_object_export(self, data):
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        for i in data:
+            aero = types.InlineKeyboardButton(i[1], callback_data=f'export_objectdata{i[0]}')
+            markup.add(aero)
+        return markup
     
     def delete_object_buttons(self, data):
         markup = types.InlineKeyboardMarkup(row_width=1)
@@ -61,12 +68,26 @@ class Bot_inline_btns:
         return markup
     
     def foreman_object_buttons(self):
+        one = types.InlineKeyboardButton("👷 Работа", callback_data="go_work")
+        four = types.InlineKeyboardButton("🌳 Материалы", callback_data="go_materials")
+        two = types.InlineKeyboardButton("🚚 Техника", callback_data="go_technique")
+        three = types.InlineKeyboardButton("📦 Приход", callback_data="go_coming")
+        five = types.InlineKeyboardButton("📇 Просмотреть отчет", callback_data="get_report")
+        self.__markup.add(one, four, five)
+        return self.__markup
+    
+    def foreman_work_object(self):
         one = types.InlineKeyboardButton("➕ Добавить работу", callback_data="add_work")
         two = types.InlineKeyboardButton("🗑️ Удалить работу", callback_data="delete_work")
-        three = types.InlineKeyboardButton("🗑️ Удалить материалы", callback_data="delete_materials")
-        four = types.InlineKeyboardButton("➕ Внести материалы", callback_data="add_materials")
-        five = types.InlineKeyboardButton("📇 Просмотреть отчет", callback_data="get_report")
-        self.__markup.add(one, two, four, three, five)
+        three = types.InlineKeyboardButton("✏️ Редактировать работу", callback_data="edit_work")
+        self.__markup.add(one, two)
+        return self.__markup
+    
+    def foreman_material_object(self):
+        one = types.InlineKeyboardButton("➕ Внести материалы", callback_data="add_materials")
+        two = types.InlineKeyboardButton("🗑️ Удалить материалы", callback_data="delete_materials")
+        three = types.InlineKeyboardButton("✏️ Редактировать материалы", callback_data="edit_materials")
+        self.__markup.add(one, two)
         return self.__markup
 
 
@@ -84,6 +105,12 @@ class Bot_inline_btns:
         self.__markup.add(one, two, three)
         return self.__markup
     
+    def foreman_choose_technique(self):
+        one = types.InlineKeyboardButton("➕ Добавить технику", callback_data="add_technique")
+        two = types.InlineKeyboardButton("🗑️ Удалить технику", callback_data="delete_technique")
+        self.__markup.add(one, two)
+        return self.__markup
+
     def delete_category_buttons(self, data):
         markup = types.InlineKeyboardMarkup(row_width=1)
         for i in data:

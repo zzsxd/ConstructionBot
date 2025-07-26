@@ -208,242 +208,203 @@ class DbAct:
         self.__db.db_write('INSERT INTO list_coming (object_id, date, name, unit, volume, supplier, cost) VALUES (?, ?, ?, ?, ?, ?, ?)', (object_id, date, name, unit, volume, supplier, cost))
 
     def db_export_object_report(self, object_id):
+        """Экспортирует данные объекта строительства в XLSX-файл"""
         try:
+            # Импорт необходимых библиотек
             from openpyxl.styles import PatternFill, Font, Alignment
             from openpyxl.utils import get_column_letter
-            
-            # Создаем Excel writer
-            writer = pd.ExcelWriter(self.__dump_path_xlsx, engine='openpyxl')
-            
-            # Определяем стили (остаются те же, что и в db_export_full_report)
-            header_fill = PatternFill(start_color='D9D9D9', end_color='D9D9D9', fill_type='solid')
-            header_font = Font(bold=True)
-            object_header_fill = PatternFill(start_color='B8CCE4', end_color='B8CCE4', fill_type='solid')
-            object_header_font = Font(bold=True)
-            category_fill = PatternFill(start_color='DCE6F1', end_color='DCE6F1', fill_type='solid')
-            category_font = Font(bold=True)
-            subcategory_fill = PatternFill(start_color='E4DFEC', end_color='E4DFEC', fill_type='solid')
-            alignment_center = Alignment(horizontal='center', vertical='center')
-            alignment_left = Alignment(horizontal='left', vertical='center')
-            money_format = '#,##0.00'
-            
+            import pandas as pd
+            import os
+
+            # Улучшенная функция преобразования чисел
             def safe_float(value):
+                """Преобразует значение в float с обработкой русских форматов"""
                 try:
-                    return float(value) if value is not None and str(value).strip() != '' else 0.0
-                except (ValueError, TypeError):
+                    if value is None or value == '':
+                        return 0.0
+                    if isinstance(value, str):
+                        # Удаляем все пробелы и заменяем запятые на точки
+                        value = value.replace(' ', '').replace(',', '.')
+                        # Удаляем все нечисловые символы кроме точки и минуса
+                        cleaned = ''.join([c for c in value if c.isdigit() or c in '.-'])
+                        if not cleaned:
+                            return 0.0
+                        value = cleaned
+                    return round(float(value), 4)
+                except (ValueError, TypeError) as e:
+                    print(f"Ошибка преобразования '{value}': {e}")
                     return 0.0
+
+            # 1. Подготовка файла отчета
+            report_filename = "report.xlsx"
             
-            # Получаем данные только по выбранному объекту
-            object_data = self.__db.db_read('SELECT row_id, object_name FROM construction_objects WHERE row_id = ?', (object_id,))
-            
+            # 2. Получение данных объекта
+            object_data = self.__db.db_read(
+                'SELECT row_id, object_name FROM construction_objects WHERE row_id = ?', 
+                (object_id,)
+            )
             if not object_data:
+                print(f"Объект с ID {object_id} не найден")
                 return False
                 
             obj_id, obj_name = object_data[0]
-            
-            # Лист "прораб" - работы и материалы
-            works_data = []
-            columns = [
-                '№ п/п',
-                'Наименование работ/материала',
-                'норма',
-                'ед.изм.',
-                'контрагент',
-                'гос.№ (техники)',
-                'объем',
-                'цена',
-                'сумма'
-            ]
-            
-            # Добавляем заголовок объекта
-            works_data.append([f"наименование объекта: {obj_name}"] + [None]*8)
-            works_data.append([None]*9)  # Пустая строка
-            
-            # Добавляем заголовки таблицы
-            works_data.append(columns)
-            
-            # Получаем категории работ для объекта
-            categories = self.__db.db_read(
-                'SELECT row_id, name FROM work_categories WHERE object_id = ? ORDER BY row_id',
-                (obj_id,))
-            
-            cat_counter = 1
-            
-            for cat_id, cat_name in categories:
-                # Добавляем категорию
-                works_data.append([str(cat_counter), cat_name] + [None]*7)
+
+            # 3. Создание Excel-файла
+            with pd.ExcelWriter(report_filename, engine='openpyxl') as writer:
+                # Создаем workbook вручную, чтобы контролировать листы
+                workbook = writer.book
                 
-                # Получаем подкатегории
-                subcategories = self.__db.db_read(
-                    'SELECT row_id, name FROM work_subcategories WHERE category_id = ? ORDER BY row_id',
-                    (cat_id,))
+                # Настройки стилей
+                header_fill = PatternFill(start_color='D9D9D9', fill_type='solid')
+                header_font = Font(bold=True)
+                alignment = Alignment(horizontal='left', vertical='center')
+                number_format = '0.0000'
+
+                # 4. Лист "Прораб" (основной лист)
+                works_data = []
+                columns = [
+                    '№ п/п', 'Наименование работ/материала', 'норма', 'ед.изм.',
+                    'контрагент', 'гос.№ (техники)', 'объем', 'цена', 'сумма'
+                ]
                 
-                sub_counter = 1
+                # Заголовок
+                works_data.append([f"Наименование объекта: {obj_name}"] + [None]*8)
+                works_data.append([None]*9)
+                works_data.append(columns)
                 
-                for subcat_id, subcat_name in subcategories:
-                    # Добавляем подкатегорию
-                    works_data.append([f"{cat_counter}.{sub_counter}", subcat_name] + [None]*7)
+                # Получаем иерархию работ
+                categories = self.__db.db_read(
+                    'SELECT row_id, name FROM work_categories WHERE object_id = ? ORDER BY row_id',
+                    (obj_id,))
+                
+                for cat_idx, (cat_id, cat_name) in enumerate(categories, 1):
+                    works_data.append([str(cat_idx), cat_name] + [None]*7)
                     
-                    # Получаем типы работ
-                    work_types = self.__db.db_read(
-                        'SELECT row_id, name, unit, volume, cost FROM work_types WHERE subcategory_id = ? ORDER BY row_id',
-                        (subcat_id,))
+                    subcategories = self.__db.db_read(
+                        'SELECT row_id, name FROM work_subcategories WHERE category_id = ? ORDER BY row_id',
+                        (cat_id,))
                     
-                    wt_counter = 1
-                    
-                    for wt_id, wt_name, wt_unit, wt_volume, wt_cost in work_types:
-                        # Добавляем тип работы
-                        works_data.append([
-                            f"{cat_counter}.{sub_counter}.{wt_counter}",
-                            wt_name,
-                            None,
-                            wt_unit if wt_unit else None,
-                            None, None,
-                            safe_float(wt_volume),
-                            safe_float(wt_cost),
-                            safe_float(wt_volume) * safe_float(wt_cost)
-                        ])
+                    for sub_idx, (subcat_id, subcat_name) in enumerate(subcategories, 1):
+                        works_data.append([f"{cat_idx}.{sub_idx}", subcat_name] + [None]*7)
                         
-                        # Получаем материалы
-                        materials = self.__db.db_read(
-                            'SELECT name, norm, unit, counterparty, state_registration_number_vehicle, volume, cost '
-                            'FROM work_materials WHERE work_type_id = ? ORDER BY row_id',
-                            (wt_id,))
+                        work_types = self.__db.db_read(
+                            'SELECT row_id, name, unit, volume, cost FROM work_types WHERE subcategory_id = ? ORDER BY row_id',
+                            (subcat_id,))
                         
-                        for mat in materials:
+                        for wt_idx, (wt_id, wt_name, wt_unit, wt_volume, wt_cost) in enumerate(work_types, 1):
+                            # Добавляем тип работы
                             works_data.append([
+                                f"{cat_idx}.{sub_idx}.{wt_idx}",
+                                wt_name,
                                 None,
-                                mat[0] if mat[0] else None,
-                                safe_float(mat[1]),
-                                mat[2] if mat[2] else None,
-                                mat[3] if mat[3] else None,
-                                mat[4] if mat[4] else None,
-                                safe_float(mat[5]),
-                                safe_float(mat[6]),
-                                safe_float(mat[5]) * safe_float(mat[6])
+                                wt_unit,
+                                None, None,
+                                safe_float(wt_volume),
+                                safe_float(wt_cost),
+                                safe_float(safe_float(wt_volume) * safe_float(wt_cost))
                             ])
-                        
-                        wt_counter += 1
-                    sub_counter += 1
-                cat_counter += 1
+                            
+                            # Материалы для этого типа работы
+                            materials = self.__db.db_read(
+                                'SELECT name, norm, unit, counterparty, state_registration_number_vehicle, volume, cost '
+                                'FROM work_materials WHERE work_type_id = ? ORDER BY row_id',
+                                (wt_id,))
+                            
+                            for mat in materials:
+                                works_data.append([
+                                    None,
+                                    mat[0],
+                                    safe_float(mat[1]),
+                                    mat[2],
+                                    mat[3],
+                                    mat[4],
+                                    safe_float(mat[5]),
+                                    safe_float(mat[6]),
+                                    safe_float(safe_float(mat[5]) * safe_float(mat[6]))
+                                ])
+
+                # Создаем DataFrame и записываем в Excel
+                works_df = pd.DataFrame(works_data, columns=columns)
+                works_df.to_excel(writer, sheet_name='Прораб', index=False, header=False)
+                
+                # Форматируем лист
+                worksheet = writer.sheets['Прораб']
+                for col, width in {'A':8, 'B':40, 'C':10, 'D':8, 'E':15, 'F':15, 'G':12, 'H':12, 'I':12}.items():
+                    worksheet.column_dimensions[col].width = width
+                
+                for row in worksheet.iter_rows():
+                    for cell in row:
+                        cell.alignment = alignment
+                        if isinstance(cell.value, (int, float)):
+                            cell.number_format = number_format
+
+                # 5. Лист "Техника"
+                tech_data = []
+                tech_columns = [
+                    'Наименование объекта', 'Наименование техники', 'Контрагент',
+                    'Гос.№ техники', 'Ед.изм.', 'Объем (часы)', 'Цена за час'
+                ]
+                
+                techniques = self.__db.db_read(
+                    'SELECT name, counterparty, state_registration_number_vehicle, unit, volume, cost '
+                    'FROM list_technique WHERE object_id = ?',
+                    (obj_id,))
+                
+                for tech in techniques:
+                    tech_data.append([
+                        obj_name,
+                        tech[0],
+                        tech[1],
+                        tech[2],
+                        tech[3],
+                        safe_float(tech[4]),
+                        safe_float(tech[5])
+                    ])
+                
+                tech_df = pd.DataFrame(tech_data, columns=tech_columns)
+                tech_df.to_excel(writer, sheet_name='Техника', index=False)
+                
+                # 6. Лист "Приход"
+                coming_data = []
+                coming_columns = ['№', 'Дата', 'Наименование', 'Ед.изм.', 'Объем', 'Поставщик', 'Цена', 'ИТОГО']
+                
+                comings = self.__db.db_read(
+                    'SELECT date, name, unit, volume, supplier, cost '
+                    'FROM list_coming WHERE object_id = ? ORDER BY date',
+                    (obj_id,))
+                
+                for idx, (date, name, unit, volume, supplier, cost) in enumerate(comings, 1):
+                    coming_data.append([
+                        idx,
+                        date,
+                        name,
+                        unit,
+                        safe_float(volume),
+                        supplier,
+                        safe_float(cost),
+                        safe_float(safe_float(volume) * safe_float(cost))
+                    ])
+                
+                coming_df = pd.DataFrame(coming_data, columns=coming_columns)
+                coming_df.to_excel(writer, sheet_name='Приход', index=False)
+                
+                # Убедимся, что все листы видны
+                for sheet in workbook.worksheets:
+                    sheet.sheet_view.tabSelected = True
+
+            # Проверка результата
+            if os.path.exists(report_filename) and os.path.getsize(report_filename) > 0:
+                return True
+            return False
             
-            # Создаем DataFrame для листа "прораб"
-            works_df = pd.DataFrame(works_data, columns=columns)
-            
-            # Записываем данные в Excel
-            works_df.to_excel(writer, sheet_name='прораб', index=False, header=False)
-            
-            # Применяем стили к листу "прораб"
-            workbook = writer.book
-            worksheet = writer.sheets['прораб']
-            
-            # Настраиваем ширину столбцов
-            for col in range(1, 10):
-                worksheet.column_dimensions[get_column_letter(col)].width = 15
-            worksheet.column_dimensions['B'].width = 50  # Шире для наименования
-            
-            # Применяем стили (аналогично db_export_full_report)
-            for row_idx, row in enumerate(worksheet.iter_rows(), 1):
-                for cell in row:
-                    cell.alignment = alignment_left
-                    
-                    if cell.value is None:
-                        continue
-                        
-                    cell_value_str = str(cell.value)
-                    
-                    # Заголовок объекта
-                    if row_idx == 1 and cell.column == 1:
-                        cell.fill = object_header_fill
-                        cell.font = object_header_font
-                    # Заголовки таблицы
-                    elif row_idx == 3:
-                        cell.fill = header_fill
-                        cell.font = header_font
-                        cell.alignment = alignment_center
-                    # Категории (1, 2)
-                    elif cell.column == 1 and cell_value_str.isdigit():
-                        cell.fill = category_fill
-                        cell.font = category_font
-                    # Подкатегории (1.1, 1.2)
-                    elif cell.column == 1 and '.' in cell_value_str and cell_value_str.count('.') == 1:
-                        cell.fill = subcategory_fill
-                    
-                    # Форматирование числовых значений
-                    if cell.column_letter in ('G', 'H', 'I'):
-                        cell.number_format = money_format
-                        if cell.column_letter == 'I':
-                            cell.font = Font(bold=True)
-            
-            # Лист "список техники"
-            tech_data = []
-            tech_columns = [
-                'Наименование объекта',
-                'Наименование техники',
-                'Контрагент',
-                'Гос.№ техники',
-                'Ед.изм.',
-                'Объем (кол-во часов)',
-                'Цена за час'
-            ]
-            
-            techniques = self.__db.db_read(
-                'SELECT name, counterparty, state_registration_number_vehicle, unit, volume, cost '
-                'FROM list_technique WHERE object_id = ?',
-                (obj_id,))
-            
-            for tech in techniques:
-                tech_data.append([
-                    obj_name,
-                    tech[0] if tech[0] else None,
-                    tech[1] if tech[1] else None,
-                    tech[2] if tech[2] else None,
-                    tech[3] if tech[3] else None,
-                    safe_float(tech[4]),
-                    safe_float(tech[5])
-                ])
-            
-            tech_df = pd.DataFrame(tech_data, columns=tech_columns)
-            tech_df.to_excel(writer, sheet_name='список техники', index=False)
-            
-            # Лист "приход"
-            coming_data = []
-            coming_columns = [
-                '№',
-                'Дата',
-                'Наименование материала',
-                'Ед.изм.',
-                'Объем',
-                'Поставщик',
-                'Цена без НДС',
-                'ИТОГО'
-            ]
-            coming_counter = 1
-            
-            comings = self.__db.db_read(
-                'SELECT date, name, unit, volume, supplier, cost '
-                'FROM list_coming WHERE object_id = ? ORDER BY date',
-                (obj_id,))
-            
-            for come in comings:
-                coming_data.append([
-                    coming_counter,
-                    come[0] if come[0] else None,
-                    come[1] if come[1] else None,
-                    come[2] if come[2] else None,
-                    safe_float(come[3]),
-                    come[4] if come[4] else None,
-                    safe_float(come[5]),
-                    safe_float(come[3]) * safe_float(come[5])
-                ])
-                coming_counter += 1
-            
-            coming_df = pd.DataFrame(coming_data, columns=coming_columns)
-            coming_df.to_excel(writer, sheet_name='приход', index=False)
-            
-            # Сохраняем файл
-            writer.close()
-            return True
         except Exception as e:
-            print(f"Error exporting to Excel: {e}")
+            print(f"Критическая ошибка при экспорте: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            # Пытаемся удалить битый файл, если он создался
+            if os.path.exists(report_filename):
+                try:
+                    os.remove(report_filename)
+                except:
+                    pass
             return False

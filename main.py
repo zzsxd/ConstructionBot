@@ -61,9 +61,15 @@ def main():
                     bot.send_message(user_id, "Выберите объект", reply_markup=buttons.choose_object_export(objects))
                 elif call.data[:17] == "export_objectdata":
                     object_id = call.data[17:]
-                    db_actions.db_export_object_report(object_id)
-                    bot.send_document(user_id, open(config.get_config()['xlsx_path'], 'rb'))
-                    os.remove(config.get_config()['xlsx_path'])
+                    if db_actions.db_export_object_report(object_id):
+                        if os.path.exists(config.get_config()['xlsx_path']):
+                            with open(config.get_config()['xlsx_path'], 'rb') as f:
+                                bot.send_document(user_id, f)
+                            os.remove(config.get_config()['xlsx_path'])
+                        else:
+                            bot.send_message(user_id, "Ошибка: файл отчета не был создан")
+                    else:
+                        bot.send_message(user_id, "Ошибка при создании отчета")
                 elif call.data == "see_objects":
                     try:
                         # Получаем список всех объектов пользователя
@@ -187,8 +193,23 @@ def main():
             elif call.data == "get_report":
                 object_id = db_actions.get_user_system_key(user_id, "object_id")
                 db_actions.db_export_object_report(object_id)
-                bot.send_document(user_id, open(config.get_config()['xlsx_path'], 'rb'))
-                os.remove(config.get_config()['xlsx_path'])
+                try:
+                    if not db_actions.db_export_object_report(object_id):
+                        bot.send_message(user_id, "Ошибка при создании отчета")
+                        return
+                        
+                    # Отправляем файл из текущей директории
+                    with open("report.xlsx", 'rb') as f:
+                        bot.send_document(user_id, f)
+                        
+                    # Удаляем временный файл
+                    try:
+                        os.remove("report.xlsx")
+                    except Exception as e:
+                        print(f"Ошибка при удалении временного файла: {e}")
+                        
+                except Exception as e:
+                    bot.send_message(user_id, f"Ошибка при обработке отчета: {str(e)}")
             elif call.data[:14] == "category_work1":
                 db_actions.set_user_system_key(user_id, "category_id", call.data[14:])
                 subcategories = db_actions.get_work_subcategories(user_id, category_id=call.data[14:])

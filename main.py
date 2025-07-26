@@ -368,29 +368,26 @@ def main():
                 db_actions.add_technique(user_id, object_id, name, contragent, number, unit, volume, user_input)
                 bot.send_message(user_id, "✅ Данные записаны")
             elif code == 21:
-                bot.send_message(user_id, "Введите дату")
-                db_actions.set_user_system_key(user_id, "index", 22)
-            elif code == 22:
                 db_actions.set_user_system_key(user_id, "coming_date", user_input)
                 bot.send_message(user_id, "Введите название прихода")
-                db_actions.set_user_system_key(user_id, "index", 23)
-            elif code == 23:
+                db_actions.set_user_system_key(user_id, "index", 22)
+            elif code == 22:
                 db_actions.set_user_system_key(user_id, "coming_name", user_input)
                 bot.send_message(user_id, "Введите единицу измерения")
-                db_actions.set_user_system_key(user_id, "index", 24)
-            elif code == 24:
+                db_actions.set_user_system_key(user_id, "index", 23)
+            elif code == 23:
                 db_actions.set_user_system_key(user_id, "coming_unit", user_input)
                 bot.send_message(user_id, "Введите объем")
-                db_actions.set_user_system_key(user_id, "index", 25)
-            elif code == 25:
+                db_actions.set_user_system_key(user_id, "index", 24)
+            elif code == 24:
                 db_actions.set_user_system_key(user_id, "coming_volume", user_input)
                 bot.send_message(user_id, "Введите поставщика")
-                db_actions.set_user_system_key(user_id, "index", 26)
+                db_actions.set_user_system_key(user_id, "index", 25)
+            elif code == 25:
                 db_actions.set_user_system_key(user_id, "coming_supplier", user_input)
-            elif code == 26:
                 bot.send_message(user_id, "Введите цену без НДС")
-                db_actions.set_user_system_key(user_id, "index", 27)
-            elif code == 27:
+                db_actions.set_user_system_key(user_id, "index", 26)
+            elif code == 26:
                 object_id = db_actions.get_user_system_key(user_id, "object_id")
                 date = db_actions.get_user_system_key(user_id, "comimg_date")
                 name = db_actions.get_user_system_key(user_id, "coming_name")

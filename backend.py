@@ -205,7 +205,7 @@ class DbAct:
     def add_list_coming(self, user_id, object_id, date, name, unit, volume, supplier, cost):
         if not self.user_is_existed(user_id):
             return None
-        self.__db.db_write('INSERT INTO list_coming (object_id, date, name, unit, volume, supplier, cost) VALUES (?, ?, ?, ?, ?, ?)', (object_id, date, name, unit, volume, supplier, cost))
+        self.__db.db_write('INSERT INTO list_coming (object_id, date, name, unit, volume, supplier, cost) VALUES (?, ?, ?, ?, ?, ?, ?)', (object_id, date, name, unit, volume, supplier, cost))
 
     def db_export_object_report(self, object_id):
         try:

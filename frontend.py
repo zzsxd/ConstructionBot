@@ -73,7 +73,7 @@ class Bot_inline_btns:
         two = types.InlineKeyboardButton("🚚 Техника", callback_data="go_technique")
         three = types.InlineKeyboardButton("📦 Приход", callback_data="go_coming")
         five = types.InlineKeyboardButton("📇 Просмотреть отчет", callback_data="get_report")
-        self.__markup.add(one, four, five)
+        self.__markup.add(one, four, two, three, five)
         return self.__markup
     
     def foreman_work_object(self):

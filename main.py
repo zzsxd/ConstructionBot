@@ -357,7 +357,7 @@ def main():
                 bot.send_message(user_id, "Тип работы записан")                
                 db_actions.set_user_system_key(user_id, "index", None)
             elif code == 8:
-                db_actions.set_user_system_key(user_id, "material_unit", user_input)
+                db_actions.set_user_system_key(user_id, "material_name", user_input)
                 bot.send_message(user_id, "Введите контрагента")
                 db_actions.set_user_system_key(user_id, "index", 9)
             elif code == 9:

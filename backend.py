@@ -301,6 +301,12 @@ class DbAct:
                     print(f"Ошибка преобразования '{value}': {e}")
                     return 0.0
 
+            def safe_str(value):
+                """Безопасное преобразование в строку"""
+                if value is None:
+                    return ''
+                return str(value).strip()
+
             def safe_add(a, b):
                 """Безопасное сложение с обработкой None"""
                 return (a or 0.0) + (b or 0.0)
@@ -392,76 +398,105 @@ class DbAct:
                             (wt_id,))
                         
                         # Группируем материалы внутри работы
-                        work_materials = defaultdict(lambda: {
-                            'volume': 0.0,
-                            'cost': 0.0,
-                            'sum': 0.0,
-                            'norm': None,
-                            'unit': None,
-                            'counterparty': None,
-                            'reg_number': None,
-                            'count': 0
-                        })
+                        work_materials = defaultdict(list)
                         
                         for mat in materials:
-                            mat_key = (mat[1].strip().lower(), mat[3], mat[4], mat[5])  # Группировка по ключу
-                            mat_volume = safe_float(mat[6])
-                            mat_cost = safe_float(mat[7])
+                            mat_name = safe_str(mat[1])
+                            if not mat_name:  # Пропускаем материалы без названия
+                                continue
+                                
+                            mat_key = mat_name.lower()  # Группировка только по названию
                             
-                            work_materials[mat_key]['volume'] += mat_volume
-                            work_materials[mat_key]['cost'] = mat_cost
-                            work_materials[mat_key]['sum'] += mat_volume * mat_cost
-                            work_materials[mat_key]['count'] += 1
+                            # Сохраняем все данные материала
+                            material_data = {
+                                'name': mat_name,
+                                'norm': safe_str(mat[2]),
+                                'unit': safe_str(mat[3]),
+                                'counterparty': safe_str(mat[4]),
+                                'reg_number': safe_str(mat[5]),
+                                'volume': safe_float(mat[6]),
+                                'cost': safe_float(mat[7]),
+                                'sum': safe_float(mat[6]) * safe_float(mat[7])
+                            }
                             
-                            # Сохраняем последние значения
-                            if work_materials[mat_key]['norm'] is None:
-                                work_materials[mat_key]['norm'] = mat[2]
-                            if work_materials[mat_key]['unit'] is None:
-                                work_materials[mat_key]['unit'] = mat[3]
-                            if work_materials[mat_key]['counterparty'] is None:
-                                work_materials[mat_key]['counterparty'] = mat[4]
-                            if work_materials[mat_key]['reg_number'] is None:
-                                work_materials[mat_key]['reg_number'] = mat[5]
+                            work_materials[mat_key].append(material_data)
                             
                             # Сохраняем для листа "Материал-Работа"
                             all_materials.append({
                                 'date': mat[0],
-                                'name': mat[1],
-                                'norm': mat[2],
-                                'unit': mat[3],
-                                'counterparty': mat[4],
-                                'state_reg_number': mat[5],
-                                'volume': mat_volume,
-                                'cost': mat_cost,
+                                'name': mat_name,
+                                'norm': safe_str(mat[2]),
+                                'unit': safe_str(mat[3]),
+                                'counterparty': safe_str(mat[4]),
+                                'state_reg_number': safe_str(mat[5]),
+                                'volume': safe_float(mat[6]),
+                                'cost': safe_float(mat[7]),
                                 'work_id': f"{cat_idx}.{sub_idx}.{wt_idx}"
                             })
                         
                         # Добавляем объединенные материалы после работы
-                        for mat_key, mat_data in work_materials.items():
-                            if mat_data['count'] > 0:
-                                works_data.append([
-                                    None,
-                                    mat_key[0].title(),  # Восстанавливаем регистр
-                                    mat_data['norm'],
-                                    mat_data['unit'],
-                                    mat_data['counterparty'],
-                                    mat_data['reg_number'],
-                                    mat_data['volume'],
-                                    mat_data['cost'],
-                                    mat_data['sum']
-                                ])
-                                # Безопасное добавление суммы материала к работе
-                                works_data[work_row_idx][8] = safe_add(works_data[work_row_idx][8], mat_data['sum'])
+                        for mat_key, materials_list in work_materials.items():
+                            if not materials_list:
+                                continue
+                                
+                            # Объединяем данные по материалам
+                            first_mat = materials_list[0]
+                            combined_mat = {
+                                'name': first_mat['name'],
+                                'norms': set(),
+                                'units': set(),
+                                'counterparties': set(),
+                                'reg_numbers': set(),
+                                'volumes': [],
+                                'costs': [],
+                                'sum': 0.0
+                            }
+                            
+                            for mat in materials_list:
+                                if mat['norm']:
+                                    combined_mat['norms'].add(mat['norm'])
+                                if mat['unit']:
+                                    combined_mat['units'].add(mat['unit'])
+                                if mat['counterparty']:
+                                    combined_mat['counterparties'].add(mat['counterparty'])
+                                if mat['reg_number']:
+                                    combined_mat['reg_numbers'].add(mat['reg_number'])
+                                combined_mat['volumes'].append(mat['volume'])
+                                combined_mat['costs'].append(mat['cost'])
+                                combined_mat['sum'] += mat['sum']
+                            
+                            # Формируем строку материала
+                            norm_str = ', '.join(filter(None, combined_mat['norms'])) if combined_mat['norms'] else None
+                            unit_str = ', '.join(filter(None, combined_mat['units'])) if combined_mat['units'] else None
+                            counterparty_str = ', '.join(filter(None, combined_mat['counterparties'])) if combined_mat['counterparties'] else None
+                            reg_number_str = ', '.join(filter(None, combined_mat['reg_numbers'])) if combined_mat['reg_numbers'] else None
+                            total_volume = sum(combined_mat['volumes'])
+                            avg_cost = sum(combined_mat['costs']) / len(combined_mat['costs']) if combined_mat['costs'] else 0.0
+                            
+                            works_data.append([
+                                None,
+                                combined_mat['name'],
+                                norm_str,
+                                unit_str,
+                                counterparty_str,
+                                reg_number_str,
+                                total_volume,
+                                avg_cost,
+                                combined_mat['sum']
+                            ])
+                            
+                            # Добавляем сумму материала к работе
+                            works_data[work_row_idx][8] = safe_add(works_data[work_row_idx][8], combined_mat['sum'])
                         
-                        # Безопасное добавление суммы работы к подкатегории
+                        # Добавляем сумму работы к подкатегории
                         subcat_row_idx = subcategory_rows[f"{cat_idx}.{sub_idx}"]
                         works_data[subcat_row_idx][8] = safe_add(works_data[subcat_row_idx][8], works_data[work_row_idx][8])
                     
-                    # Безопасное добавление суммы подкатегории к категории
+                    # Добавляем сумму подкатегории к категории
                     cat_row_idx = category_rows[f"{cat_idx}"]
                     works_data[cat_row_idx][8] = safe_add(works_data[cat_row_idx][8], works_data[subcategory_rows[f"{cat_idx}.{sub_idx}"]][8])
                 
-                # Безопасное добавление суммы категории к общему итогу
+                # Добавляем сумму категории к общему итогу
                 works_data[0][8] = safe_add(works_data[0][8], works_data[category_rows[f"{cat_idx}"]][8])
 
             # Записываем данные в лист "Прораб"

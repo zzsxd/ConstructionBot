@@ -76,6 +76,7 @@ class DB:
             CREATE TABLE IF NOT EXISTS work_materials(
                 row_id INTEGER primary key autoincrement not null,
                 work_type_id INTEGER NOT NULL,
+                date TEXT,
                 name TEXT,
                 norm TEXT,
                 unit TEXT,

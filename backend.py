@@ -228,6 +228,16 @@ class DbAct:
             return None
         self.__db.db_write('INSERT INTO list_technique (object_id, name, counterparty, state_registration_number_vehicle, unit, volume, cost) VALUES (?, ?, ?, ?, ?, ?, ?)', (object_id, technique_name, technique_contagent, technique_number, technique_unit, technique_volume, technique_cost,))
     
+    def delete_technique(self, user_id, row_id):
+        if not self.user_is_existed(user_id):
+            return None
+        self.__db.db_write('DELETE FROM list_technique WHERE row_id = ?', (row_id))
+
+    def get_list_technique(self, user_id, object_id):
+        if not self.user_is_existed(user_id):
+            return None
+        return self.__db.db_read('SELECT row_id, name FROM list_technique WHERE object_id = ?', (object_id,))
+
     def add_list_coming(self, user_id, object_id, date, name, unit, volume, supplier, cost):
         if not self.user_is_existed(user_id):
             return None

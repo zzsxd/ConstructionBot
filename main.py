@@ -108,6 +108,14 @@ def main():
                     bot.send_message(user_id, "Выберите пункт", reply_markup=buttons.material_control_buttons())
                 elif call.data == "coming_control":
                     bot.send_message(user_id, "Выберите пункт", reply_markup=buttons.control_coming_buttons())
+                elif call.data == "technical_control":
+                    bot.send_message(user_id, "Выберите пункт", reply_markup=buttons.technical_control_buttons())
+                elif call.data == "delete_technical":
+                    technique_list = db_actions.get_list_technique(user_id, object_id=db_actions.get_user_system_key(user_id, "object_id"))
+                    bot.send_message(user_id, "Выберите технику", reply_markup=buttons.admin_choose_technical_delete(technique_list))
+                elif call.data[:21] == "technique_list_delete":
+                    db_actions.delete_technique(user_id, call.data[21:])
+                    bot.send_message(user_id, "Техника удалена ✅")
                 elif call.data == "delete_coming":
                     coming_list = db_actions.get_from_list_coming(user_id, object_id=db_actions.get_user_system_key(user_id, "admin_object_id"))
                     bot.send_message(user_id, "Выберите материал прихода", reply_markup=buttons.choose_coming_buttons(coming_list))

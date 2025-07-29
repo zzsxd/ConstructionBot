@@ -58,6 +58,11 @@ class Bot_inline_btns:
         self.__markup.add(one, two, three, four)
         return self.__markup
     
+    def technical_control_buttons(self):
+        one = types.InlineKeyboardButton("🗑️ Удалить технику", callback_data="delete_technical")
+        self.__markup.add(one)
+        return self.__markup
+
     def material_control_buttons(self):
         one = types.InlineKeyboardButton("🗑️ Удалить материал", callback_data="delete_materials")
         two = types.InlineKeyboardButton("➕ Добавить норму и ед. измерения", callback_data="add_norma_and_unit")
@@ -83,7 +88,7 @@ class Bot_inline_btns:
         return self.__markup
     
     def control_coming_buttons(self):
-        one = types.InlineKeyboardButton("Удалить приход", callback_data="delete_coming")
+        one = types.InlineKeyboardButton("🗑️ Удалить приход", callback_data="delete_coming")
         self.__markup.add(one)
         return self.__markup
     
@@ -244,5 +249,12 @@ class Bot_inline_btns:
         markup = types.InlineKeyboardMarkup(row_width=1)
         for i in data:
             aero = types.InlineKeyboardButton(i[1], callback_data=f'admin_work_type{i[0]}')
+            markup.add(aero)
+        return markup
+    
+    def admin_choose_technical_delete(self, data):
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        for i in data:
+            aero = types.InlineKeyboardButton(i[1], callback_data=f'technique_list_delete{i[0]}')
             markup.add(aero)
         return markup

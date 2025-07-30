@@ -279,7 +279,7 @@ class DbAct:
                 'category_font': Font(bold=True, color='FFFFFF'),
                 'subcategory_font': Font(bold=True, color='000000'),
                 'border': Border(left=Side(style='thin'), right=Side(style='thin'), 
-                            top=Side(style='thin'), bottom=Side(style='thin')),
+                                top=Side(style='thin'), bottom=Side(style='thin')),
                 'number_format': '0.0000',
                 'money_format': '#,##0.00',
                 'date_format': 'YYYY-MM-DD'
@@ -291,11 +291,13 @@ class DbAct:
                     if value is None or value == '':
                         return 0.0
                     if isinstance(value, str):
+                        # Заменяем запятые на точки и удаляем пробелы (для чисел вроде "1 000,50")
                         value = value.replace(' ', '').replace(',', '.')
-                        cleaned = ''.join([c for c in value if c.isdigit() or c in '.-'])
+                        # Удаляем все символы, кроме цифр и точек
+                        cleaned = ''.join([c for c in value if c.isdigit() or c == '.'])
                         if not cleaned:
                             return 0.0
-                        value = cleaned
+                        return round(float(cleaned), 4)
                     return round(float(value), 4)
                 except (ValueError, TypeError) as e:
                     print(f"Ошибка преобразования '{value}': {e}")
@@ -307,16 +309,11 @@ class DbAct:
                     return ''
                 return str(value).strip()
 
-            def safe_add(a, b):
-                """Безопасное сложение с обработкой None"""
-                return (a or 0.0) + (b or 0.0)
-
             report_filename = "report.xlsx"
             
             object_data = self.__db.db_read(
                 'SELECT row_id, object_name FROM construction_objects WHERE row_id = ?', 
-                (object_id,)
-            )
+                (object_id,))
             if not object_data:
                 print(f"Объект с ID {object_id} не найден")
                 return False
@@ -342,7 +339,7 @@ class DbAct:
                 'контрагент', 'гос.№ (техники)', 'объем', 'цена', 'сумма'
             ]
             
-            # Инициализация с явным указанием 0.0 для сумм
+            # Инициализация
             works_data.append([f"Наименование объекта: {obj_name}"] + [None]*7 + [0.0])
             works_data.append([None]*9)
             works_data.append(columns)
@@ -352,97 +349,104 @@ class DbAct:
                 'SELECT row_id, name FROM work_categories WHERE object_id = ? ORDER BY row_id',
                 (obj_id,))
             
-            # Словари для хранения данных
+            # Словари для хранения индексов строк
             category_rows = {}
             subcategory_rows = {}
             work_rows = {}
 
             for cat_idx, (cat_id, cat_name) in enumerate(categories, 1):
-                # Добавляем категорию с инициализацией суммы
+                # Добавляем категорию с инициализацией суммы как 0.0
                 works_data.append([f"{cat_idx}", cat_name] + [None]*7 + [0.0])
                 category_rows[f"{cat_idx}"] = len(works_data) - 1
+                category_total = 0.0
                 
                 subcategories = self.__db.db_read(
                     'SELECT row_id, name FROM work_subcategories WHERE category_id = ? ORDER BY row_id',
                     (cat_id,))
                 
                 for sub_idx, (subcat_id, subcat_name) in enumerate(subcategories, 1):
-                    # Добавляем подкатегорию с инициализацией суммы
+                    # Добавляем подкатегорию с инициализацией суммы как 0.0
                     works_data.append([f"{cat_idx}.{sub_idx}", subcat_name] + [None]*7 + [0.0])
                     subcategory_rows[f"{cat_idx}.{sub_idx}"] = len(works_data) - 1
+                    subcategory_total = 0.0
                     
                     work_types = self.__db.db_read(
-                        'SELECT row_id, name, unit, volume, cost FROM work_types WHERE subcategory_id = ? ORDER BY row_id',
+                        'SELECT row_id, name, unit, volume FROM work_types WHERE subcategory_id = ? ORDER BY row_id',
                         (subcat_id,))
                     
-                    for wt_idx, (wt_id, wt_name, wt_unit, wt_volume, wt_cost) in enumerate(work_types, 1):
-                        # Добавляем работу с расчетом суммы
-                        work_sum = safe_float(wt_volume) * safe_float(wt_cost)
-                        works_data.append([
-                            f"{cat_idx}.{sub_idx}.{wt_idx}",
-                            wt_name,
-                            None,
-                            wt_unit,
-                            None, None,
-                            safe_float(wt_volume),
-                            safe_float(wt_cost),
-                            work_sum
-                        ])
-                        work_row_idx = len(works_data) - 1
-                        work_rows[f"{cat_idx}.{sub_idx}.{wt_idx}"] = work_row_idx
-                        
+                    for wt_idx, (wt_id, wt_name, wt_unit, wt_volume) in enumerate(work_types, 1):
                         # Получаем материалы для этой работы
                         materials = self.__db.db_read(
                             'SELECT date, name, norm, unit, counterparty, state_registration_number_vehicle, volume, cost '
                             'FROM work_materials WHERE work_type_id = ? ORDER BY date',
                             (wt_id,))
                         
-                        # Группируем материалы внутри работы
-                        work_materials = defaultdict(list)
+                        # Считаем общую сумму материалов
+                        total_materials_sum = 0.0
+                        material_groups = defaultdict(list)
                         
                         for mat in materials:
-                            mat_name = safe_str(mat[1])
-                            if not mat_name:  # Пропускаем материалы без названия
-                                continue
+                            try:
+                                volume = safe_float(mat[6])
+                                cost = safe_float(mat[7])
+                                mat_sum = volume * cost
+                                total_materials_sum += mat_sum
                                 
-                            mat_key = mat_name.lower()  # Группировка только по названию
-                            
-                            # Сохраняем все данные материала
-                            material_data = {
-                                'name': mat_name,
-                                'norm': safe_str(mat[2]),
-                                'unit': safe_str(mat[3]),
-                                'counterparty': safe_str(mat[4]),
-                                'reg_number': safe_str(mat[5]),
-                                'volume': safe_float(mat[6]),
-                                'cost': safe_float(mat[7]),
-                                'sum': safe_float(mat[6]) * safe_float(mat[7])
-                            }
-                            
-                            work_materials[mat_key].append(material_data)
-                            
-                            # Сохраняем для листа "Материал-Работа"
-                            all_materials.append({
-                                'date': mat[0],
-                                'name': mat_name,
-                                'norm': safe_str(mat[2]),
-                                'unit': safe_str(mat[3]),
-                                'counterparty': safe_str(mat[4]),
-                                'state_reg_number': safe_str(mat[5]),
-                                'volume': safe_float(mat[6]),
-                                'cost': safe_float(mat[7]),
-                                'work_id': f"{cat_idx}.{sub_idx}.{wt_idx}"
-                            })
+                                # Группируем материалы по названию
+                                mat_name = safe_str(mat[1])
+                                if mat_name:
+                                    material_groups[mat_name.lower()].append({
+                                        'name': mat_name,
+                                        'norm': safe_str(mat[2]),
+                                        'unit': safe_str(mat[3]),
+                                        'counterparty': safe_str(mat[4]),
+                                        'reg_number': safe_str(mat[5]),
+                                        'volume': volume,
+                                        'cost': cost,
+                                        'sum': mat_sum
+                                    })
+                                
+                                # Сохраняем для листа "Материал-Работа"
+                                all_materials.append({
+                                    'date': mat[0],
+                                    'name': mat_name,
+                                    'norm': safe_str(mat[2]),
+                                    'unit': safe_str(mat[3]),
+                                    'counterparty': safe_str(mat[4]),
+                                    'state_reg_number': safe_str(mat[5]),
+                                    'volume': volume,
+                                    'cost': cost,
+                                    'sum': mat_sum,
+                                    'work_id': f"{cat_idx}.{sub_idx}.{wt_idx}"
+                                })
+                            except Exception as e:
+                                print(f"Ошибка обработки материала: {e}")
+                                continue
                         
-                        # Добавляем объединенные материалы после работы
-                        for mat_key, materials_list in work_materials.items():
-                            if not materials_list:
+                        # Добавляем вид работы с правильной суммой
+                        volume = safe_float(wt_volume)
+                        unit_price = total_materials_sum / volume if volume != 0 else 0
+                        
+                        works_data.append([
+                            f"{cat_idx}.{sub_idx}.{wt_idx}",
+                            wt_name,
+                            None,
+                            wt_unit,
+                            None, None,
+                            volume,
+                            unit_price,
+                            total_materials_sum
+                        ])
+                        work_row_idx = len(works_data) - 1
+                        work_rows[f"{cat_idx}.{sub_idx}.{wt_idx}"] = work_row_idx
+                        
+                        # Добавляем сгруппированные материалы
+                        for mat_group in material_groups.values():
+                            if not mat_group:
                                 continue
                                 
-                            # Объединяем данные по материалам
-                            first_mat = materials_list[0]
-                            combined_mat = {
-                                'name': first_mat['name'],
+                            combined = {
+                                'name': mat_group[0]['name'],
                                 'norms': set(),
                                 'units': set(),
                                 'counterparties': set(),
@@ -452,58 +456,46 @@ class DbAct:
                                 'sum': 0.0
                             }
                             
-                            for mat in materials_list:
-                                if mat['norm']:
-                                    combined_mat['norms'].add(mat['norm'])
-                                if mat['unit']:
-                                    combined_mat['units'].add(mat['unit'])
-                                if mat['counterparty']:
-                                    combined_mat['counterparties'].add(mat['counterparty'])
-                                if mat['reg_number']:
-                                    combined_mat['reg_numbers'].add(mat['reg_number'])
-                                combined_mat['volumes'].append(mat['volume'])
-                                combined_mat['costs'].append(mat['cost'])
-                                combined_mat['sum'] += mat['sum']
-                            
-                            # Формируем строку материала
-                            norm_str = ', '.join(filter(None, combined_mat['norms'])) if combined_mat['norms'] else None
-                            unit_str = ', '.join(filter(None, combined_mat['units'])) if combined_mat['units'] else None
-                            counterparty_str = ', '.join(filter(None, combined_mat['counterparties'])) if combined_mat['counterparties'] else None
-                            reg_number_str = ', '.join(filter(None, combined_mat['reg_numbers'])) if combined_mat['reg_numbers'] else None
-                            total_volume = sum(combined_mat['volumes'])
-                            avg_cost = sum(combined_mat['costs']) / len(combined_mat['costs']) if combined_mat['costs'] else 0.0
+                            for mat in mat_group:
+                                if mat['norm']: combined['norms'].add(mat['norm'])
+                                if mat['unit']: combined['units'].add(mat['unit'])
+                                if mat['counterparty']: combined['counterparties'].add(mat['counterparty'])
+                                if mat['reg_number']: combined['reg_numbers'].add(mat['reg_number'])
+                                combined['volumes'].append(mat['volume'])
+                                combined['costs'].append(mat['cost'])
+                                combined['sum'] += mat['sum']
                             
                             works_data.append([
                                 None,
-                                combined_mat['name'],
-                                norm_str,
-                                unit_str,
-                                counterparty_str,
-                                reg_number_str,
-                                total_volume,
-                                avg_cost,
-                                combined_mat['sum']
+                                combined['name'],
+                                ', '.join(filter(None, combined['norms'])) if combined['norms'] else None,
+                                ', '.join(filter(None, combined['units'])) if combined['units'] else None,
+                                ', '.join(filter(None, combined['counterparties'])) if combined['counterparties'] else None,
+                                ', '.join(filter(None, combined['reg_numbers'])) if combined['reg_numbers'] else None,
+                                sum(combined['volumes']),
+                                sum(combined['costs'])/len(combined['costs']) if combined['costs'] else 0,
+                                combined['sum']
                             ])
-                            
-                            # Добавляем сумму материала к работе
-                            works_data[work_row_idx][8] = safe_add(works_data[work_row_idx][8], combined_mat['sum'])
                         
-                        # Добавляем сумму работы к подкатегории
-                        subcat_row_idx = subcategory_rows[f"{cat_idx}.{sub_idx}"]
-                        works_data[subcat_row_idx][8] = safe_add(works_data[subcat_row_idx][8], works_data[work_row_idx][8])
+                        # Добавляем сумму работы к сумме подкатегории
+                        subcategory_total += total_materials_sum
                     
-                    # Добавляем сумму подкатегории к категории
-                    cat_row_idx = category_rows[f"{cat_idx}"]
-                    works_data[cat_row_idx][8] = safe_add(works_data[cat_row_idx][8], works_data[subcategory_rows[f"{cat_idx}.{sub_idx}"]][8])
+                    # Обновляем сумму подкатегории
+                    works_data[subcategory_rows[f"{cat_idx}.{sub_idx}"]][8] = subcategory_total
+                    category_total += subcategory_total
                 
-                # Добавляем сумму категории к общему итогу
-                works_data[0][8] = safe_add(works_data[0][8], works_data[category_rows[f"{cat_idx}"]][8])
+                # Обновляем сумму категории
+                works_data[category_rows[f"{cat_idx}"]][8] = category_total
+                
+                # Добавляем сумму категории к общей сумме объекта
+                current_sum = works_data[0][8] or 0.0
+                works_data[0][8] = current_sum + category_total
 
             # Записываем данные в лист "Прораб"
             for row in works_data:
                 ws_prorab.append(row)
             
-            # Применяем стили к листу "Прораб"
+            # Применяем стили
             for row in ws_prorab.iter_rows():
                 for cell in row:
                     cell.border = styles['border']

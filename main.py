@@ -344,16 +344,10 @@ def main():
                 bot.send_message(user_id, "Введите объем")
 
             elif code == 6:
-                db_actions.set_user_system_key(user_id, "work_type_volume", user_input)
-                db_actions.set_user_system_key(user_id, "index", 7)
-                bot.send_message(user_id, "Введите цену")
-
-            elif code == 7:
                 subcategory_id = db_actions.get_user_system_key(user_id, "subcategory_id")
                 name = db_actions.get_user_system_key(user_id, "work_type_name")
                 unit = db_actions.get_user_system_key(user_id, "work_type_unit")
-                volume = db_actions.get_user_system_key(user_id, "work_type_volume")
-                db_actions.add_work_type(user_id, subcategory_id, name, unit, volume, user_input)
+                db_actions.add_work_type(user_id, subcategory_id, name, unit, user_input, None)
                 bot.send_message(user_id, "Тип работы записан")                
                 db_actions.set_user_system_key(user_id, "index", None)
             elif code == 8:
@@ -407,7 +401,7 @@ def main():
             elif code == 20:
                 object_id = name = db_actions.get_user_system_key(user_id, "object_id")
                 name = db_actions.get_user_system_key(user_id, "technique_name")
-                contragent = db_actions.get_user_system_key(user_id, "technique_contagent")
+                contragent = db_actions.get_user_system_key(user_id, "technique_contragent")
                 number = db_actions.get_user_system_key(user_id, "technique_number")
                 unit = db_actions.get_user_system_key(user_id, "technique_unit")
                 volume = db_actions.get_user_system_key(user_id, "technique_volume")

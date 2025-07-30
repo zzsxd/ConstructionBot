@@ -258,3 +258,24 @@ class Bot_inline_btns:
             aero = types.InlineKeyboardButton(i[1], callback_data=f'technique_list_delete{i[0]}')
             markup.add(aero)
         return markup
+    
+    def categories_technique_buttons(self, data):
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        for i in data:
+            aero = types.InlineKeyboardButton(i[1], callback_data=f'categories_technique{i[0]}')
+            markup.add(aero)
+        return markup
+    
+    def subcategories_technique_buttons(self, data):
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        for i in data:
+            aero = types.InlineKeyboardButton(i[1], callback_data=f'subcategories_technique{i[0]}')
+            markup.add(aero)
+        return markup
+    
+    def work_types_technique_buttons(self, data):
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        for i in data:
+            aero = types.InlineKeyboardButton(i[1], callback_data=f'work_types_technique{i[0]}')
+            markup.add(aero)
+        return markup

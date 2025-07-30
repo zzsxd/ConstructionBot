@@ -93,12 +93,14 @@ class DB:
             CREATE TABLE IF NOT EXISTS list_technique(
                 row_id INTEGER primary key autoincrement not null,
                 object_id INTEGER NOT NULL,
+                work_type_id INTEGER NOT NULL,
                 name TEXT,
                 counterparty TEXT,
                 state_registration_number_vehicle TEXT,
                 unit TEXT,
                 volume TEXT,
                 cost TEXT,
+                FOREIGN KEY (work_type_id) REFERENCES work_types(row_id) ON DELETE CASCADE,
                 FOREIGN KEY (object_id) REFERENCES construction_objects(row_id) ON DELETE CASCADE,
                 UNIQUE(row_id)
                 )

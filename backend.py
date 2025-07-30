@@ -223,10 +223,10 @@ class DbAct:
             return None
         self.__db.db_write('DELETE FROM work_materials WHERE row_id = ?', (row_id,))
 
-    def add_technique(self, user_id, object_id, technique_name, technique_contagent, technique_number, technique_unit, technique_volume, technique_cost):
+    def add_technique(self, user_id, object_id, work_type_id, technique_name, technique_contagent, technique_number, technique_unit, technique_volume, technique_cost):
         if not self.user_is_existed(user_id):
             return None
-        self.__db.db_write('INSERT INTO list_technique (object_id, name, counterparty, state_registration_number_vehicle, unit, volume, cost) VALUES (?, ?, ?, ?, ?, ?, ?)', (object_id, technique_name, technique_contagent, technique_number, technique_unit, technique_volume, technique_cost,))
+        self.__db.db_write('INSERT INTO list_technique (object_id, work_type_id, name, counterparty, state_registration_number_vehicle, unit, volume, cost) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', (object_id, work_type_id, technique_name, technique_contagent, technique_number, technique_unit, technique_volume, technique_cost,))
     
     def delete_technique(self, user_id, row_id):
         if not self.user_is_existed(user_id):
@@ -275,11 +275,13 @@ class DbAct:
                 'subcategory': PatternFill(start_color='A9D08E', end_color='A9D08E', fill_type='solid'),
                 'work_type': PatternFill(start_color='E2EFDA', end_color='E2EFDA', fill_type='solid'),
                 'material_font': Font(color='0070C0'),
+                'technique': PatternFill(start_color='FFF2CC', end_color='FFF2CC', fill_type='solid'),
+                'technique_font': Font(color='000000', italic=True),
                 'header_font': Font(bold=True, color='FFFFFF'),
                 'category_font': Font(bold=True, color='FFFFFF'),
                 'subcategory_font': Font(bold=True, color='000000'),
                 'border': Border(left=Side(style='thin'), right=Side(style='thin'), 
-                                top=Side(style='thin'), bottom=Side(style='thin')),
+                            top=Side(style='thin'), bottom=Side(style='thin')),
                 'number_format': '0.0000',
                 'money_format': '#,##0.00',
                 'date_format': 'YYYY-MM-DD'
@@ -291,9 +293,7 @@ class DbAct:
                     if value is None or value == '':
                         return 0.0
                     if isinstance(value, str):
-                        # Заменяем запятые на точки и удаляем пробелы (для чисел вроде "1 000,50")
                         value = value.replace(' ', '').replace(',', '.')
-                        # Удаляем все символы, кроме цифр и точек
                         cleaned = ''.join([c for c in value if c.isdigit() or c == '.'])
                         if not cleaned:
                             return 0.0
@@ -334,30 +334,44 @@ class DbAct:
             # ==================== ЛИСТ "ПРОРАБ" ====================
             works_data = []
             all_materials = []
+            technique_data = []  # Для хранения данных о технике
+            
+            # Заголовки
             columns = [
                 '№ п/п', 'Наименование работ/материала', 'норма', 'ед.изм.',
                 'контрагент', 'гос.№ (техники)', 'объем', 'цена', 'сумма'
             ]
             
-            # Инициализация
             works_data.append([f"Наименование объекта: {obj_name}"] + [None]*7 + [0.0])
             works_data.append([None]*9)
             works_data.append(columns)
             
-            # Получаем категории
+            # Получаем категории работ
             categories = self.__db.db_read(
                 'SELECT row_id, name FROM work_categories WHERE object_id = ? ORDER BY row_id',
                 (obj_id,))
             
-            # Словари для хранения индексов строк
-            category_rows = {}
-            subcategory_rows = {}
-            work_rows = {}
+            # Получаем данные о технике
+            techniques = self.__db.db_read(
+                'SELECT name, counterparty, state_registration_number_vehicle, unit, volume, cost '
+                'FROM list_technique WHERE object_id = ?',
+                (obj_id,))
+            
+            # Формируем данные о технике
+            for tech in techniques:
+                technique_data.append({
+                    'name': safe_str(tech[0]),
+                    'counterparty': safe_str(tech[1]),
+                    'reg_number': safe_str(tech[2]),
+                    'unit': safe_str(tech[3]),
+                    'volume': safe_float(tech[4]),
+                    'cost': safe_float(tech[5]),
+                    'sum': safe_float(tech[4]) * safe_float(tech[5])
+                })
 
+            # Обрабатываем категории, подкатегории и работы
             for cat_idx, (cat_id, cat_name) in enumerate(categories, 1):
-                # Добавляем категорию с инициализацией суммы как 0.0
                 works_data.append([f"{cat_idx}", cat_name] + [None]*7 + [0.0])
-                category_rows[f"{cat_idx}"] = len(works_data) - 1
                 category_total = 0.0
                 
                 subcategories = self.__db.db_read(
@@ -365,9 +379,7 @@ class DbAct:
                     (cat_id,))
                 
                 for sub_idx, (subcat_id, subcat_name) in enumerate(subcategories, 1):
-                    # Добавляем подкатегорию с инициализацией суммы как 0.0
                     works_data.append([f"{cat_idx}.{sub_idx}", subcat_name] + [None]*7 + [0.0])
-                    subcategory_rows[f"{cat_idx}.{sub_idx}"] = len(works_data) - 1
                     subcategory_total = 0.0
                     
                     work_types = self.__db.db_read(
@@ -375,13 +387,12 @@ class DbAct:
                         (subcat_id,))
                     
                     for wt_idx, (wt_id, wt_name, wt_unit, wt_volume) in enumerate(work_types, 1):
-                        # Получаем материалы для этой работы
+                        # Получаем материалы для работы
                         materials = self.__db.db_read(
                             'SELECT date, name, norm, unit, counterparty, state_registration_number_vehicle, volume, cost '
                             'FROM work_materials WHERE work_type_id = ? ORDER BY date',
                             (wt_id,))
                         
-                        # Считаем общую сумму материалов
                         total_materials_sum = 0.0
                         material_groups = defaultdict(list)
                         
@@ -392,21 +403,18 @@ class DbAct:
                                 mat_sum = volume * cost
                                 total_materials_sum += mat_sum
                                 
-                                # Группируем материалы по названию
                                 mat_name = safe_str(mat[1])
-                                if mat_name:
-                                    material_groups[mat_name.lower()].append({
-                                        'name': mat_name,
-                                        'norm': safe_str(mat[2]),
-                                        'unit': safe_str(mat[3]),
-                                        'counterparty': safe_str(mat[4]),
-                                        'reg_number': safe_str(mat[5]),
-                                        'volume': volume,
-                                        'cost': cost,
-                                        'sum': mat_sum
-                                    })
+                                material_groups[mat_name.lower()].append({
+                                    'name': mat_name,
+                                    'norm': safe_str(mat[2]),
+                                    'unit': safe_str(mat[3]),
+                                    'counterparty': safe_str(mat[4]),
+                                    'reg_number': safe_str(mat[5]),
+                                    'volume': volume,
+                                    'cost': cost,
+                                    'sum': mat_sum
+                                })
                                 
-                                # Сохраняем для листа "Материал-Работа"
                                 all_materials.append({
                                     'date': mat[0],
                                     'name': mat_name,
@@ -419,11 +427,10 @@ class DbAct:
                                     'sum': mat_sum,
                                     'work_id': f"{cat_idx}.{sub_idx}.{wt_idx}"
                                 })
-                            except Exception as e:
-                                print(f"Ошибка обработки материала: {e}")
+                            except Exception:
                                 continue
                         
-                        # Добавляем вид работы с правильной суммой
+                        # Добавляем вид работы
                         volume = safe_float(wt_volume)
                         unit_price = total_materials_sum / volume if volume != 0 else 0
                         
@@ -437,10 +444,8 @@ class DbAct:
                             unit_price,
                             total_materials_sum
                         ])
-                        work_row_idx = len(works_data) - 1
-                        work_rows[f"{cat_idx}.{sub_idx}.{wt_idx}"] = work_row_idx
                         
-                        # Добавляем сгруппированные материалы
+                        # Добавляем материалы
                         for mat_group in material_groups.values():
                             if not mat_group:
                                 continue
@@ -477,19 +482,49 @@ class DbAct:
                                 combined['sum']
                             ])
                         
-                        # Добавляем сумму работы к сумме подкатегории
                         subcategory_total += total_materials_sum
                     
-                    # Обновляем сумму подкатегории
-                    works_data[subcategory_rows[f"{cat_idx}.{sub_idx}"]][8] = subcategory_total
+                    works_data[-len(work_types)*2 - 1][8] = subcategory_total  # Обновляем сумму подкатегории
                     category_total += subcategory_total
                 
-                # Обновляем сумму категории
-                works_data[category_rows[f"{cat_idx}"]][8] = category_total
+                works_data[-len(subcategories)*2 - 1][8] = category_total  # Обновляем сумму категории
+                works_data[0][8] = (works_data[0][8] or 0.0) + category_total  # Общая сумма
+
+            # Добавляем технику в конец (без заголовка)
+            tech_groups = defaultdict(list)
+            for tech in technique_data:
+                tech_groups[tech['name'].lower()].append(tech)
+            
+            for tech_group in tech_groups.values():
+                combined = {
+                    'name': tech_group[0]['name'],
+                    'counterparties': set(),
+                    'reg_numbers': set(),
+                    'units': set(),
+                    'volumes': [],
+                    'costs': [],
+                    'sum': 0.0
+                }
                 
-                # Добавляем сумму категории к общей сумме объекта
-                current_sum = works_data[0][8] or 0.0
-                works_data[0][8] = current_sum + category_total
+                for tech in tech_group:
+                    if tech['counterparty']: combined['counterparties'].add(tech['counterparty'])
+                    if tech['reg_number']: combined['reg_numbers'].add(tech['reg_number'])
+                    if tech['unit']: combined['units'].add(tech['unit'])
+                    combined['volumes'].append(tech['volume'])
+                    combined['costs'].append(tech['cost'])
+                    combined['sum'] += tech['sum']
+                
+                works_data.append([
+                    None,
+                    combined['name'],
+                    None,
+                    ', '.join(filter(None, combined['units'])) if combined['units'] else None,
+                    ', '.join(filter(None, combined['counterparties'])) if combined['counterparties'] else None,
+                    ', '.join(filter(None, combined['reg_numbers'])) if combined['reg_numbers'] else None,
+                    sum(combined['volumes']),
+                    sum(combined['costs'])/len(combined['costs']) if combined['costs'] else 0,
+                    combined['sum']
+                ])
 
             # Записываем данные в лист "Прораб"
             for row in works_data:

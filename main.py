@@ -289,10 +289,21 @@ def main():
                 bot.send_message(user_id, "Введите материал")
                 db_actions.set_user_system_key(user_id, "index", 8)
             elif call.data == "add_technique":
+                categories = db_actions.get_work_categories(user_id, object_id=db_actions.get_user_system_key(user_id, "object_id"))
+                bot.send_message(user_id, "Выберите категорию", reply_markup=buttons.categories_technique_buttons(categories))
+            elif call.data[:20] == "categories_technique":
+                subcategory = db_actions.get_work_subcategories(user_id, call.data[20:])
+                bot.send_message(user_id, "Выберите подкатегорию", reply_markup=buttons.subcategories_technique_buttons(subcategory))
+            elif call.data[:23] == "subcategories_technique":
+                work_type = db_actions.get_work_type(user_id, call.data[23:])
+                bot.send_message(user_id, "Выберите вид работы", reply_markup=buttons.work_types_technique_buttons(work_type))
+            elif call.data[:20] == "work_types_technique":
+                db_actions.set_user_system_key(user_id, "work_type_id", call.data[20:])
                 bot.send_message(user_id, "Введите название техники")
                 db_actions.set_user_system_key(user_id, "index", 15)
             elif call.data == "go_coming":
-                bot.send_message(user_id, "Введите дату прихода")
+                bot.send_message(user_id, "Введите дату прихода\n" \
+                "Вводите дату в формате год-масяц-число (Например: 2025-12-31)")
                 db_actions.set_user_system_key(user_id, "index", 21)
 
     @bot.message_handler(content_types=['text', 'photo'])
@@ -323,7 +334,7 @@ def main():
                 db_actions.set_user_system_key(user_id, "index", None)
             elif code == 2:
                 # user_input - category name
-                object_id = db_actions.get_user_system_key(user_id, "object_id")
+                object_id = db_actions.get_user_system_key(user_id, "admin_object_id")
                 db_actions.add_work_categories(user_id, object_id, user_input)
                 bot.send_message(user_id, "Категория записана")
                 db_actions.set_user_system_key(user_id, "index", None)
@@ -399,13 +410,14 @@ def main():
                 bot.send_message(user_id, "Введите цену за час")
                 db_actions.set_user_system_key(user_id, "index", 20)
             elif code == 20:
-                object_id = name = db_actions.get_user_system_key(user_id, "object_id")
+                object_id = db_actions.get_user_system_key(user_id, "object_id")
+                work_type_id = db_actions.get_user_system_key(user_id, "work_type_id")
                 name = db_actions.get_user_system_key(user_id, "technique_name")
                 contragent = db_actions.get_user_system_key(user_id, "technique_contragent")
                 number = db_actions.get_user_system_key(user_id, "technique_number")
                 unit = db_actions.get_user_system_key(user_id, "technique_unit")
                 volume = db_actions.get_user_system_key(user_id, "technique_volume")
-                db_actions.add_technique(user_id, object_id, name, contragent, number, unit, volume, user_input)
+                db_actions.add_technique(user_id, object_id, work_type_id, name, contragent, number, unit, volume, user_input)
                 bot.send_message(user_id, "✅ Данные записаны")
             elif code == 21:
                 db_actions.set_user_system_key(user_id, "coming_date", user_input)

@@ -34,6 +34,7 @@ class DbAct:
                                                                 "work_type_name": None,
                                                                 "work_type_unit": None,
                                                                 "work_type_volume": None,
+                                                                "material_id": None,
                                                                 "material_date": None,
                                                                 "material_name": None,
                                                                 "material_norm": None,
@@ -125,7 +126,7 @@ class DbAct:
     def write_new_object(self, user_id, object_name):
         if not self.user_is_existed(user_id):
             return None
-        self.__db.db_write('INSERT INTO construction_objects (object_name) VALUES (?)', (object_name, ))
+        self.__db.db_write('INSERT INTO construction_objects (object_name) VALUES (?)', (object_name,))
 
     def get_all_objects(self, user_id):
         if not self.user_is_existed(user_id):
@@ -140,12 +141,12 @@ class DbAct:
     def get_foreman_objects(self, user_id):
         if not self.user_is_existed(user_id):
             return None
-        return self.__db.db_read('SELECT row_id, object_name FROM construction_objects WHERE user_id = ?', (user_id, ))
+        return self.__db.db_read('SELECT row_id, object_name FROM construction_objects WHERE user_id = ?', (user_id,))
 
     def get_name_from_user_id(self, user_id):
         if not self.user_is_existed(user_id):
             return None
-        return self.__db.db_read('SELECT full_name FROM users WHERE user_id = ?', (user_id, ))
+        return self.__db.db_read('SELECT full_name FROM users WHERE user_id = ?', (user_id,))
     
     def get_foremans(self, user_id):
         if not self.user_is_existed(user_id):
@@ -155,7 +156,12 @@ class DbAct:
     def attach_foreman_to_object(self, user_id, object_name):
         if not self.user_is_existed(user_id):
             return None
-        self.__db.db_write('UPDATE construction_objects SET user_id = ? WHERE object_name = ?', (user_id, object_name, ))
+        self.__db.db_write('UPDATE construction_objects SET user_id = ? WHERE object_name = ?', (user_id, object_name,))
+    
+    def unpin_foreman_from_object(self, user_id, object_name):
+        if not self.user_is_existed(user_id):
+            return None
+        self.__db.db_write('UPDATE construction_objects SET user_id = ? WHERE object_name = ?', (None, object_name,))
     
     def delete_object(self, user_id, object_name):
         if not self.user_is_existed(user_id):
@@ -193,10 +199,10 @@ class DbAct:
             return None
         self.__db.db_write('DELETE FROM work_subcategories WHERE row_id = ?', (subcategory_id,))
 
-    def add_work_type(self, user_id, subcategory_id, name, unit, volume, cost):
+    def add_work_type(self, user_id, subcategory_id, name, unit):
         if not self.user_is_existed(user_id):
             return None
-        self.__db.db_write('INSERT INTO work_types (subcategory_id, name, unit, volume, cost) VALUES (?, ?, ?, ?, ?)', (subcategory_id, name, unit, volume, cost,))
+        self.__db.db_write('INSERT INTO work_types (subcategory_id, name, unit) VALUES (?, ?, ?)', (subcategory_id, name, unit,))
     
     def get_work_type(self, user_id, subcategory_id):
         if not self.user_is_existed(user_id):
@@ -253,10 +259,35 @@ class DbAct:
             return None
         self.__db.db_write('DELETE FROM list_coming WHERE row_id = ?', (row_id,))
 
-    def add_unit_and_norm(self, user_id, unit, norm, work_type_id):
+    def add_mateials_norm(self, user_id, norm, row_id):
         if not self.user_is_existed(user_id):
             return None
-        self.__db.db_write('UPDATE work_materials SET norm = ? and unit = ? WHERE work_type_id = ?', (norm, unit, work_type_id,))
+        self.__db.db_write('UPDATE work_materials SET norm = ? WHERE row_id = ?', (norm, row_id,))
+
+    def add_materials_unit(self, user_id, unit, row_id):
+        if not self.user_is_existed(user_id):
+            return None
+        self.__db.db_write('UPDATE work_materials SET unit = ? WHERE row_id = ?', (unit, row_id,))
+    
+    def add_materials_number(self, user_id, number, row_id):
+        if not self.user_is_existed(user_id):
+            return None
+        self.__db.db_write('UPDATE work_materials SET state_registration_number_vehicle = ? WHERE row_id = ?', (number, row_id,))
+
+    def select_material_smr(self, user_id, work_type_id):
+        if not self.user_is_existed(user_id):
+            return None
+        return self.__db.db_read('SELECT name = ? FROM work_materials WHERE work_type_id = ?', ("СМР", work_type_id,))
+    
+    def edit_material_smr(self, user_id, unit, volume, cost, work_type_id):
+        if not self.user_is_existed(user_id):
+            return None
+        self.__db.db_write('UPDATE work_materials SET unit = ?, volume = ?, cost = ? WHERE work_type_id = ?', (unit, volume, cost, work_type_id))
+    
+    def add_material_smr(self, user_id, date, volume, unit, cost, work_type_id):
+        if not self.user_is_existed(user_id):
+            return None
+        self.__db.db_write('INSERT INTO work_materials (date, work_type_id, name, unit, volume, cost) VALUES (?, ?, "СМР", ?, ?, ?)', (date, work_type_id, unit, volume, cost,))
     
     def db_export_object_report(self, object_id):
         """Экспортирует данные объекта строительства в XLSX-файл с правильной структурой сумм"""
@@ -334,7 +365,7 @@ class DbAct:
             # ==================== ЛИСТ "ПРОРАБ" ====================
             works_data = []
             all_materials = []
-            technique_data = []  # Для хранения данных о технике
+            technique_data_by_work = defaultdict(list)  # Для группировки техники по work_type_id
             
             # Заголовки
             columns = [
@@ -351,28 +382,33 @@ class DbAct:
                 'SELECT row_id, name FROM work_categories WHERE object_id = ? ORDER BY row_id',
                 (obj_id,))
             
-            # Получаем данные о технике
+            # Получаем данные о технике и группируем их по work_type_id
             techniques = self.__db.db_read(
-                'SELECT name, counterparty, state_registration_number_vehicle, unit, volume, cost '
+                'SELECT row_id, work_type_id, name, counterparty, state_registration_number_vehicle, unit, volume, cost '
                 'FROM list_technique WHERE object_id = ?',
                 (obj_id,))
             
-            # Формируем данные о технике
             for tech in techniques:
-                technique_data.append({
-                    'name': safe_str(tech[0]),
-                    'counterparty': safe_str(tech[1]),
-                    'reg_number': safe_str(tech[2]),
-                    'unit': safe_str(tech[3]),
-                    'volume': safe_float(tech[4]),
-                    'cost': safe_float(tech[5]),
-                    'sum': safe_float(tech[4]) * safe_float(tech[5])
+                tech_id, work_type_id, name, counterparty, reg_number, unit, volume, cost = tech
+                technique_data_by_work[work_type_id].append({
+                    'name': safe_str(name),
+                    'counterparty': safe_str(counterparty),
+                    'reg_number': safe_str(reg_number),
+                    'unit': safe_str(unit),
+                    'volume': safe_float(volume),
+                    'cost': safe_float(cost),
+                    'sum': safe_float(volume) * safe_float(cost)
                 })
 
+            # Словари для хранения сумм
+            category_sums = defaultdict(float)
+            subcategory_sums = defaultdict(float)
+            work_type_sums = defaultdict(float)
+            
             # Обрабатываем категории, подкатегории и работы
             for cat_idx, (cat_id, cat_name) in enumerate(categories, 1):
                 works_data.append([f"{cat_idx}", cat_name] + [None]*7 + [0.0])
-                category_total = 0.0
+                current_category_row = len(works_data) - 1
                 
                 subcategories = self.__db.db_read(
                     'SELECT row_id, name FROM work_subcategories WHERE category_id = ? ORDER BY row_id',
@@ -380,13 +416,13 @@ class DbAct:
                 
                 for sub_idx, (subcat_id, subcat_name) in enumerate(subcategories, 1):
                     works_data.append([f"{cat_idx}.{sub_idx}", subcat_name] + [None]*7 + [0.0])
-                    subcategory_total = 0.0
+                    current_subcategory_row = len(works_data) - 1
                     
                     work_types = self.__db.db_read(
-                        'SELECT row_id, name, unit, volume FROM work_types WHERE subcategory_id = ? ORDER BY row_id',
+                        'SELECT row_id, name, unit FROM work_types WHERE subcategory_id = ? ORDER BY row_id',
                         (subcat_id,))
                     
-                    for wt_idx, (wt_id, wt_name, wt_unit, wt_volume) in enumerate(work_types, 1):
+                    for wt_idx, (wt_id, wt_name, wt_unit) in enumerate(work_types, 1):
                         # Получаем материалы для работы
                         materials = self.__db.db_read(
                             'SELECT date, name, norm, unit, counterparty, state_registration_number_vehicle, volume, cost '
@@ -395,7 +431,9 @@ class DbAct:
                         
                         total_materials_sum = 0.0
                         material_groups = defaultdict(list)
+                        smr_volume = 0.0
                         
+                        # Обрабатываем материалы
                         for mat in materials:
                             try:
                                 volume = safe_float(mat[6])
@@ -415,6 +453,9 @@ class DbAct:
                                     'sum': mat_sum
                                 })
                                 
+                                if mat_name.lower() == 'смр':
+                                    smr_volume = volume
+                                
                                 all_materials.append({
                                     'date': mat[0],
                                     'name': mat_name,
@@ -430,22 +471,33 @@ class DbAct:
                             except Exception:
                                 continue
                         
-                        # Добавляем вид работы
-                        volume = safe_float(wt_volume)
-                        unit_price = total_materials_sum / volume if volume != 0 else 0
+                        # Добавляем технику к общей сумме
+                        total_technique_sum = 0.0
+                        if wt_id in technique_data_by_work:
+                            for tech in technique_data_by_work[wt_id]:
+                                total_technique_sum += tech['sum']
                         
+                        total_work_sum = total_materials_sum + total_technique_sum
+                        
+                        # Сохраняем суммы для агрегации
+                        work_type_sums[wt_id] = total_work_sum
+                        subcategory_sums[subcat_id] += total_work_sum
+                        category_sums[cat_id] += total_work_sum
+                        
+                        # Добавляем вид работы с общей суммой
                         works_data.append([
                             f"{cat_idx}.{sub_idx}.{wt_idx}",
                             wt_name,
                             None,
                             wt_unit,
                             None, None,
-                            volume,
-                            unit_price,
-                            total_materials_sum
+                            smr_volume,
+                            total_work_sum / smr_volume if smr_volume != 0 else 0,
+                            total_work_sum
                         ])
+                        current_work_type_row = len(works_data) - 1
                         
-                        # Добавляем материалы
+                        # Добавляем материалы (с суммированием)
                         for mat_group in material_groups.values():
                             if not mat_group:
                                 continue
@@ -482,18 +534,52 @@ class DbAct:
                                 combined['sum']
                             ])
                         
-                        subcategory_total += total_materials_sum
+                        # Добавляем технику (с суммированием)
+                        if wt_id in technique_data_by_work:
+                            for tech in technique_data_by_work[wt_id]:
+                                works_data.append([
+                                    None,
+                                    tech['name'],
+                                    None,
+                                    tech['unit'],
+                                    tech['counterparty'],
+                                    tech['reg_number'],
+                                    tech['volume'],
+                                    tech['cost'],
+                                    tech['sum']
+                                ])
+                        
+                        # Обновляем сумму вида работы
+                        works_data[current_work_type_row][8] = total_work_sum
+                        works_data[current_work_type_row][7] = total_work_sum / smr_volume if smr_volume != 0 else 0
                     
-                    works_data[-len(work_types)*2 - 1][8] = subcategory_total  # Обновляем сумму подкатегории
-                    category_total += subcategory_total
+                    # Обновляем сумму подкатегории
+                    works_data[current_subcategory_row][8] = subcategory_sums[subcat_id]
                 
-                works_data[-len(subcategories)*2 - 1][8] = category_total  # Обновляем сумму категории
-                works_data[0][8] = (works_data[0][8] or 0.0) + category_total  # Общая сумма
+                # Обновляем сумму категории
+                works_data[current_category_row][8] = category_sums[cat_id]
+            
+            # Обновляем общую сумму объекта
+            works_data[0][8] = sum(category_sums.values())
 
-            # Добавляем технику в конец (без заголовка)
+            # Добавляем технику без привязки к работе (если есть)
+            techniques_without_work = self.__db.db_read(
+                'SELECT name, counterparty, state_registration_number_vehicle, unit, volume, cost '
+                'FROM list_technique WHERE object_id = ? AND work_type_id IS NULL',
+                (obj_id,))
+            
             tech_groups = defaultdict(list)
-            for tech in technique_data:
-                tech_groups[tech['name'].lower()].append(tech)
+            for tech in techniques_without_work:
+                tech_sum = safe_float(tech[4]) * safe_float(tech[5])
+                tech_groups[tech[0].lower()].append({
+                    'name': tech[0],
+                    'counterparty': tech[1],
+                    'reg_number': tech[2],
+                    'unit': tech[3],
+                    'volume': safe_float(tech[4]),
+                    'cost': safe_float(tech[5]),
+                    'sum': tech_sum
+                })
             
             for tech_group in tech_groups.values():
                 combined = {
@@ -525,6 +611,8 @@ class DbAct:
                     sum(combined['costs'])/len(combined['costs']) if combined['costs'] else 0,
                     combined['sum']
                 ])
+                # Добавляем сумму техники без привязки к общей сумме объекта
+                works_data[0][8] += combined['sum']
 
             # Записываем данные в лист "Прораб"
             for row in works_data:
@@ -576,10 +664,8 @@ class DbAct:
             materials_data.append([None]*9)
             materials_data.append(materials_columns)
 
-            # Сортируем материалы по дате и работе
             all_materials_sorted = sorted(all_materials, key=lambda x: (x['date'], x['work_id']))
             
-            # Добавляем все материалы с указанием работы
             for mat in all_materials_sorted:
                 materials_data.append([
                     mat['date'],
@@ -593,11 +679,9 @@ class DbAct:
                     mat['work_id']
                 ])
 
-            # Записываем данные в лист "Материал-Работа"
             for row in materials_data:
                 ws_material.append(row)
             
-            # Применяем стили к листу "Материал-Работа"
             for row in ws_material.iter_rows():
                 for cell in row:
                     cell.border = styles['border']
@@ -617,7 +701,6 @@ class DbAct:
                     
                     cell.alignment = Alignment(horizontal='left', vertical='center')
 
-            # Настройка ширины столбцов
             for col, width in {'A':12, 'B':40, 'C':10, 'D':8, 'E':15, 'F':15, 'G':12, 'H':12, 'I':15}.items():
                 ws_material.column_dimensions[col].width = width
 
@@ -625,13 +708,17 @@ class DbAct:
             tech_data = []
             tech_columns = [
                 'Наименование техники', 'Контрагент', 'Гос.№ техники', 
-                'Ед.изм.', 'Объем (часы)', 'Цена за час', 'Сумма'
+                'Ед.изм.', 'Объем (часы)', 'Цена за час', 'Сумма', 'Вид работы'
             ]
             
-            techniques = self.__db.db_read(
-                'SELECT name, counterparty, state_registration_number_vehicle, unit, volume, cost '
-                'FROM list_technique WHERE object_id = ?',
-                (obj_id,))
+            # Получаем все данные о технике с названиями видов работ
+            techniques = self.__db.db_read('''
+                SELECT t.name, t.counterparty, t.state_registration_number_vehicle, 
+                    t.unit, t.volume, t.cost, wt.name
+                FROM list_technique t
+                LEFT JOIN work_types wt ON t.work_type_id = wt.row_id
+                WHERE t.object_id = ?
+            ''', (obj_id,))
             
             for tech in techniques:
                 tech_sum = safe_float(tech[4]) * safe_float(tech[5])
@@ -642,16 +729,14 @@ class DbAct:
                     tech[3],
                     safe_float(tech[4]),
                     safe_float(tech[5]),
-                    tech_sum
+                    tech_sum,
+                    tech[6] if tech[6] else 'Не указан'
                 ])
 
-            # Заголовки
             ws_tech.append(tech_columns)
-            # Данные
             for row in tech_data:
                 ws_tech.append(row)
 
-            # Применяем стили к листу "Техника"
             for row in ws_tech.iter_rows():
                 for cell in row:
                     cell.border = styles['border']
@@ -668,8 +753,7 @@ class DbAct:
                     
                     cell.alignment = Alignment(horizontal='left', vertical='center')
 
-            # Настройка ширины столбцов
-            for col, width in {'A':25, 'B':20, 'C':15, 'D':10, 'E':12, 'F':12, 'G':12}.items():
+            for col, width in {'A':25, 'B':20, 'C':15, 'D':10, 'E':12, 'F':12, 'G':12, 'H':25}.items():
                 ws_tech.column_dimensions[col].width = width
 
             # ==================== ЛИСТ "ПРИХОД" ====================
@@ -695,13 +779,10 @@ class DbAct:
                     'приход'
                 ])
 
-            # Заголовки
             ws_coming.append(coming_columns)
-            # Данные
             for row in coming_data:
                 ws_coming.append(row)
 
-            # Применяем стили к листу "Приход"
             for row in ws_coming.iter_rows():
                 for cell in row:
                     cell.border = styles['border']
@@ -720,14 +801,10 @@ class DbAct:
                     
                     cell.alignment = Alignment(horizontal='left', vertical='center')
 
-            # Настройка ширины столбцов
             for col, width in {'A':5, 'B':12, 'C':30, 'D':8, 'E':12, 'F':20, 'G':12, 'H':12, 'I':15}.items():
                 ws_coming.column_dimensions[col].width = width
 
-            # Устанавливаем первый лист активным
             wb.active = 0
-
-            # Сохраняем файл
             wb.save(report_filename)
 
             if os.path.exists(report_filename) and os.path.getsize(report_filename) > 0:

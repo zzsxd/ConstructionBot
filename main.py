@@ -160,7 +160,7 @@ def main():
                     if categories:
                         bot.send_message(user_id, "Выберите категорию", reply_markup=buttons.foreman_choose_add_work_types(categories))
                     else:
-                            bot.send_message(user_id, "❌Категории не найдены")
+                            bot.send_message(user_id, "Категории не найдены")
                 elif call.data == "delete_type_work":
                     subcategory_id = db_actions.get_user_system_key(user_id, "subcategory_id")
                     work_type = db_actions.get_work_type(user_id, subcategory_id)
@@ -341,7 +341,10 @@ def main():
             elif call.data == "add_smr":
                 object_id = db_actions.get_user_system_key(user_id, "object_id")
                 category = db_actions.get_work_categories(user_id, object_id)
-                bot.send_message(user_id, "Выберите категорию", reply_markup=buttons.foreman_choose_category1(category))
+                if not category:
+                    bot.send_message(user_id, "❌ Категории не найдены")
+                else:
+                    bot.send_message(user_id, "Выберите категорию", reply_markup=buttons.foreman_choose_category1(category))
             elif call.data[:17] == "1foreman_category":
                 subcategory = db_actions.get_work_subcategories(user_id, call.data[17:])
                 bot.send_message(user_id, "Выберите подкатегорию", reply_markup=buttons.foreman_choose_subcategory1(subcategory))
@@ -434,7 +437,7 @@ def main():
             elif code == 4:
                 subcategory_id = db_actions.get_user_system_key(user_id, "subcategory_id")
                 db_actions.set_user_system_key(user_id, "work_type_name", user_input)
-                bot.send_message(user_id, "Введите единицу измерения")               
+                bot.send_message(user_id, "📏 Введите единицу измерения")               
                 db_actions.set_user_system_key(user_id, "index", 5)
             elif code == 5:
                 subcategory_id = db_actions.get_user_system_key(user_id, "subcategory_id")
@@ -445,9 +448,13 @@ def main():
             elif code == 8:
                 db_actions.set_user_system_key(user_id, "material_name", user_input)
                 bot.send_message(user_id, "👷‍♀️ Введите контрагента")
+                db_actions.set_user_system_key(user_id, "index", 9)
+            elif code == 9:
+                db_actions.set_user_system_key(user_id, "material_counterparty", user_input)
+                bot.send_message(user_id, "📏 Введите единицу измерения")
                 db_actions.set_user_system_key(user_id, "index", 10)
             elif code == 10:
-                db_actions.set_user_system_key(user_id, "material_counterparty", user_input)
+                db_actions.set_user_system_key(user_id, "material_unit", user_input)
                 bot.send_message(user_id, "✏️ Введите объем")
                 db_actions.set_user_system_key(user_id, "index", 11)
             elif code == 11:
@@ -467,6 +474,12 @@ def main():
                 db_actions.add_work_material(user_id, work_type_id, today, name, norm, unit, counterparty, registration_number, volume, user_input)
                 bot.send_message(user_id, "✅ Материал успешно записан")
                 db_actions.set_user_system_key(user_id, "index", None)
+                db_actions.set_user_system_key(user_id, "material_name", None)
+                db_actions.set_user_system_key(user_id, "material_norm", None)
+                db_actions.set_user_system_key(user_id, "material_unit", None)
+                db_actions.set_user_system_key(user_id, "material_counterparty", None)
+                db_actions.set_user_system_key(user_id, "material_registration_number", None)
+                db_actions.set_user_system_key(user_id, "material_volume", None)
             elif code == 15:
                 db_actions.set_user_system_key(user_id, "technique_name", user_input)
                 bot.send_message(user_id, "👷‍♀️ Введите контрагента")
@@ -527,12 +540,19 @@ def main():
                 supplier = db_actions.get_user_system_key(user_id, "coming_supplier")
                 db_actions.add_list_coming(user_id, object_id, today, name, unit, volume, supplier, user_input)
                 bot.send_message(user_id, "✅ Данные записаны")
+                db_actions.set_user_system_key(user_id, "coming_date", None)
+                db_actions.set_user_system_key(user_id, "coming_name", None)
+                db_actions.set_user_system_key(user_id, "coming_unit", None)
+                db_actions.set_user_system_key(user_id, "coming_volume", None)
+                db_actions.set_user_system_key(user_id, "coming_supplier", None)
                 db_actions.set_user_system_key(user_id, "index", None)
             elif code == 27:
                 row_id = db_actions.get_user_system_key(user_id, "material_id")
                 norm = db_actions.get_user_system_key(user_id, "material_norm")
                 db_actions.add_mateials_norm(user_id, norm, row_id)
                 bot.send_message(user_id, "✅ Данные записаны")
+                db_actions.set_user_system_key(user_id, "material_id", None)
+                db_actions.set_user_system_key(user_id, "material_norm", None)
                 db_actions.set_user_system_key(user_id, "index", None)
             elif code == 28:
                 db_actions.add_materials_unit(user_id, user_input, row_id=db_actions.get_user_system_key(user_id, "material_id"))
@@ -556,6 +576,9 @@ def main():
                 volume = db_actions.get_user_system_key(user_id, "material_volume")
                 db_actions.edit_material_smr(user_id, unit, volume, user_input, work_type)
                 bot.send_message(user_id, "✅ Данные записаны")
+                db_actions.set_user_system_key(user_id, "work_type_id", None)
+                db_actions.set_user_system_key(user_id, "material_unit", None)
+                db_actions.set_user_system_key(user_id, "material_volume", None)
                 db_actions.set_user_system_key(user_id, "index", None)
             elif code == 34:
                 db_actions.set_user_system_key(user_id, "material_volume", user_input)
@@ -573,6 +596,9 @@ def main():
                 unit = db_actions.get_user_system_key(user_id, "material_unit")
                 db_actions.add_material_smr(user_id, date=today, volume=volume, unit=unit, cost=user_input, work_type_id=work_type_id)
                 bot.send_message(user_id, "✅ СМР создан!")
+                work_type_id = db_actions.set_user_system_key(user_id, "work_type_id", None)
+                volume = db_actions.set_user_system_key(user_id, "material_volume", None)
+                unit = db_actions.set_user_system_key(user_id, "material_unit", None)
                 db_actions.set_user_system_key(user_id, "index", None)
     
     bot.polling(none_stop=True)
